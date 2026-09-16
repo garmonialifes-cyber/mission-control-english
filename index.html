@@ -125,6 +125,40 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-d
 .stats .v{font-family:var(--disp);font-size:28px;font-weight:700;line-height:1;margin-bottom:5px}
 .stats .l{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
 .foot{margin-top:28px;font-size:13px;color:var(--ink-faint);font-family:var(--mono)}
+/* ── грузовой отсек ── */
+.bal{border:1px solid var(--amber);background:linear-gradient(180deg,#2A1D08,var(--hull));
+  padding:22px 24px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.bal .v{font-family:var(--disp);font-size:clamp(38px,9vw,56px);font-weight:700;line-height:1;
+  color:var(--amber);font-variant-numeric:tabular-nums}
+.bal .u{font-family:var(--disp);font-size:20px;color:var(--amber);font-weight:600}
+.bal .sp{flex:1}
+.bal .sub{font-family:var(--mono);font-size:12px;color:var(--ink-dim);text-align:right}
+.prizes{display:grid;gap:1px;background:var(--line);border:1px solid var(--line)}
+.pz{background:var(--hull);padding:15px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.pz .nm{font-size:18px;font-weight:600;flex:1;min-width:160px}
+.pz .pr{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:16px;color:var(--amber);white-space:nowrap}
+.pz .go{font-family:var(--disp);font-weight:600;letter-spacing:.05em;text-transform:uppercase;font-size:12px;
+  background:var(--amber);color:#1B1206;border:0;padding:9px 16px;white-space:nowrap}
+.pz .go:disabled{background:none;border:1px solid var(--line);color:var(--ink-faint);cursor:default}
+.pz .need{height:3px;background:#1a2340;width:100%;margin-top:-6px}
+.pz .need span{display:block;height:100%;background:var(--amber);opacity:.7}
+.pz.demo .nm::after{content:"пример";font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-faint);margin-left:9px;vertical-align:middle}
+.ord{background:var(--hull);padding:13px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.ord .nm{flex:1;min-width:150px}
+.rates{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line)}
+.rates div{background:var(--hull);padding:13px 15px}
+.rates .v{font-family:var(--disp);font-size:22px;font-weight:700;color:var(--amber);line-height:1.1}
+.rates .l{font-size:13px;color:var(--ink-faint);line-height:1.35;margin-top:3px}
+.addrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.addrow input{font-family:var(--body);font-size:16px;background:#050912;color:var(--ink);
+  border:1px solid var(--line);padding:10px 12px}
+.addrow input#pn{flex:1;min-width:180px}
+.addrow input#pg{width:110px;font-family:var(--mono)}
+.addrow input:focus{border-color:var(--amber);outline:none}
+.x{background:none;border:0;color:var(--ink-faint);font-size:18px;line-height:1;padding:4px 8px}
+.x:hover{color:var(--fail)}
 @media (prefers-reduced-motion:no-preference){
   .flash{animation:fl .45s ease-out}
   @keyframes fl{from{background:#14351f}to{background:var(--hull)}}
@@ -141,8 +175,15 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-d
 <script src="bank.js"></script>
 <script>
 const KEY='mce_denis_v1';
+const PRIZES0=[
+  {id:'p1',n:'Полчаса сверху на планшет',g:300,demo:true},
+  {id:'p2',n:'Мороженое на выбор',g:250,demo:true},
+  {id:'p3',n:'Кино с папой в выходные',g:900,demo:true},
+  {id:'p4',n:'Набор LEGO про космос',g:3000,demo:true}
+];
 const blank=()=>({name:'DENIS',started:null,days:[],skills:Object.fromEntries(SKILLS.map(s=>[s.id,
-  {status:'unknown',seen:0,first:0,planet:false}])),diag:null,log:[]});
+  {status:'unknown',seen:0,first:0,planet:false}])),diag:null,log:[],
+  coins:0,earned:0,prizes:PRIZES0.slice(),orders:[]});
 let S=load();
 function load(){try{const r=localStorage.getItem(KEY);if(r)return Object.assign(blank(),JSON.parse(r))}catch(e){}return blank()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
@@ -155,6 +196,8 @@ const norm=t=>t.toLowerCase().trim().replace(/[.!?,]+$/,'').replace(/\s+/g,' ');
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 const STL={green:'ИСПРАВЕН',amber:'ШАТКО',red:'ПОВРЕЖДЕНИЕ',unknown:'НЕ ПРОВЕРЕН'};
 const skill=id=>SKILLS.find(s=>s.id===id);
+const RATE={right:10,after:3,mission:25,bay:150,streak:20};
+function pay(n){S.coins+=n;S.earned+=n;save();return n}
 const V=document.getElementById('view');
 let route='home';
 
@@ -166,13 +209,14 @@ function tele(){
     <span class="cell">СТАЖЁР <i>${S.name}</i></span>
     <span class="cell">ОТСЕКИ <i>${ok}/9</i></span>
     <span class="cell">ДНЕЙ ПОДРЯД <i>${streak()}</i></span>
+    <span class="cell">КОИНЫ <i>${S.coins}</i></span>
     <span class="sp"></span>`;
-  [['home','Станция'],['parent','Для мамы']].forEach(([r,l])=>{
+  [['home','Станция'],['cargo','Грузовой отсек'],['parent','Для мамы']].forEach(([r,l])=>{
     const b=document.createElement('button');b.className='tab';b.textContent=l;
     b.setAttribute('aria-current',route===r);b.onclick=()=>go(r);t.appendChild(b)});
 }
 function go(r){route=r;render()}
-function render(){tele();({home:home,parent:parent_,diag:()=>{},mission:()=>{}})[route]?.();
+function render(){tele();({home:home,cargo:cargo,parent:parent_,diag:()=>{},mission:()=>{}})[route]?.();
   document.getElementById('foot').textContent=S.diag?`Диагностика пройдена ${S.diag}. Прогресс сохраняется в этом браузере.`:'';}
 
 /* ─────────── ГЛАВНЫЙ ЭКРАН ─────────── */
@@ -221,13 +265,16 @@ function startDiag(){
       S.skills[s.id].status=c===2?'green':c===1?'amber':'red';
       S.skills[s.id].seen+=2;S.skills[s.id].first+=c;
       if(c===2)S.skills[s.id].planet=true});
-    S.diag=new Date().toLocaleDateString('ru-RU');markDay();save();
+    S.diag=new Date().toLocaleDateString('ru-RU');markDay();
+    const dg=pay(res.filter(r=>r.ok).length*RATE.right+res.filter(r=>!r.ok).length*RATE.after);save();
     const bad=SKILLS.filter(s=>S.skills[s.id].status==='red');
     V.innerHTML=`<div class="eyebrow">Отчёт бортового компьютера</div>
       <h1>Диагностика закончена</h1>
       <p class="lead">${bad.length?'Повреждений найдено: '+bad.length+'. Чинить будем по одному — по отсеку за раз.'
         :'Крупных поломок нет. Подтянем то, что шатается.'}</p>
-      <p><button class="btn" id="ok">Смотреть карту станции</button></p>`;
+      <div class="bal"><span class="v">+${dg}</span><span class="u">коинов</span>
+        <span class="sp"></span><span class="sub">коины копятся в грузовом отсеке —<br>там их меняют на настоящее</span></div>
+      <p style="margin-top:18px"><button class="btn" id="ok">Смотреть карту станции</button></p>`;
     document.getElementById('ok').onclick=()=>go('home');
   });
 }
@@ -238,15 +285,21 @@ function startMission(sid){
   const qs=shuffle(BANK[sid]).slice(0,6).map(q=>({sid,q}));
   runSet(qs,{mode:'mission',title:s.icon+' '+s.name},res=>{
     const c=res.filter(r=>r.ok).length;const st=S.skills[sid];
+    let got=c*RATE.right+(res.length-c)*RATE.after;
+    if(c>=5)got+=RATE.mission;
+    if(streak()>=3)got+=RATE.streak;
     st.seen+=res.length;st.first+=c;
     const was=st.status;
     st.status=c>=5?'green':c>=3?'amber':'red';
     markDay();S.log.push({d:today(),sid,c,n:res.length});save();
     const newPlanet=st.status==='green'&&!st.planet;
-    if(newPlanet)st.planet=true;save();
+    if(newPlanet){st.planet=true;got+=RATE.bay}
+    pay(got);save();
     const p=PLANETS[sid];
     V.innerHTML=`<div class="eyebrow">Миссия завершена</div>
       <h1>${c} из ${res.length} с первого раза</h1>
+      <div class="bal" style="margin-bottom:18px"><span class="v">+${got}</span><span class="u">коинов</span>
+        <span class="sp"></span><span class="sub">на счету ${S.coins}<br>грузовой отсек ждёт</span></div>
       <p class="lead">${st.status==='green'?'Отсек «'+s.name+'» исправен. Курс свободен.'
         :st.status==='amber'?'Отсек «'+s.name+'» держится, но шатается. Завтра добьём.'
         :'Отсек «'+s.name+'» ещё повреждён. Это нормально — вернёмся завтра, станет легче.'}</p>
@@ -328,6 +381,57 @@ function runSet(items,opt,done){
   }
 }
 
+
+/* ─────────── ГРУЗОВОЙ ОТСЕК ─────────── */
+function cargo(){
+  const waiting=S.orders.filter(o=>!o.done);
+  const done=S.orders.filter(o=>o.done);
+  V.innerHTML=`<div class="eyebrow">Грузовой отсек</div>
+    <h1>Что закажем с Земли</h1>
+    <p class="lead">За работу в отсеках станция начисляет тебе коины. Копишь — и заказываешь
+    грузовым кораблём с Земли то, что сам выберешь. Корабль летает не каждый день, так что
+    решай, на что тратить.</p>
+    <div class="bal"><span class="v">${S.coins}</span><span class="u">коинов</span>
+      <span class="sp"></span><span class="sub">всего заработано ${S.earned}<br>потрачено ${S.earned-S.coins}</span></div>
+    <p class="eyebrow" style="margin:22px 0 10px">Груз к заказу</p>
+    <div class="prizes" id="pz"></div>
+    ${waiting.length?`<p class="eyebrow" style="margin:26px 0 10px">Ждут отправки</p>
+      <div class="prizes">${waiting.map(o=>`<div class="ord">
+        <span class="nm">${esc(o.n)}</span>
+        <span class="chip amber">заказ принят</span>
+        <span class="mono" style="color:var(--ink-faint);font-size:13px">${o.d}</span></div>`).join('')}</div>
+      <p style="font-size:14px;color:var(--ink-faint);margin-top:10px">
+      Заказ уходит на Землю — мама подтвердит отправку.</p>`:''}
+    ${done.length?`<p class="eyebrow" style="margin:26px 0 10px">Доставлено</p>
+      <div class="prizes">${done.slice(-6).reverse().map(o=>`<div class="ord">
+        <span class="nm" style="color:var(--ink-dim)">${esc(o.n)}</span>
+        <span class="chip green">получено</span></div>`).join('')}</div>`:''}
+    <p class="eyebrow" style="margin:30px 0 10px">Откуда берутся коины</p>
+    <div class="rates">
+      <div><div class="v">${RATE.right}</div><div class="l">за ответ с первого раза</div></div>
+      <div><div class="v">${RATE.after}</div><div class="l">за разобранную ошибку — она тоже работа</div></div>
+      <div><div class="v">${RATE.mission}</div><div class="l">за миссию без осечек</div></div>
+      <div><div class="v">${RATE.bay}</div><div class="l">за отсек, доведённый до исправного</div></div>
+      <div><div class="v">${RATE.streak}</div><div class="l">за каждый день, если занимаешься три дня подряд</div></div>
+    </div>`;
+  const box=document.getElementById('pz');
+  if(!S.prizes.length){box.innerHTML=`<div class="pz"><span class="nm" style="color:var(--ink-faint)">
+    Список пока пуст — мама добавит на своей вкладке</span></div>`;return}
+  S.prizes.forEach(p=>{
+    const can=S.coins>=p.g,pct=Math.min(100,Math.round(S.coins/p.g*100));
+    const d=document.createElement('div');d.className='pz'+(p.demo?' demo':'');
+    d.innerHTML=`<span class="nm">${esc(p.n)}</span>
+      <span class="pr">${p.g} <span style="font-size:13px">коинов</span></span>
+      <button class="go"${can?'':' disabled'}>${can?'Заказать':'не хватает '+(p.g-S.coins)}</button>
+      ${can?'':`<span class="need"><span style="width:${pct}%"></span></span>`}`;
+    if(can)d.querySelector('.go').onclick=()=>{
+      if(!confirm(`Заказать «${p.n}» за ${p.g} коинов?`))return;
+      S.coins-=p.g;S.orders.push({id:Date.now(),n:p.n,g:p.g,d:new Date().toLocaleDateString('ru-RU'),done:false});
+      save();render()};
+    box.appendChild(d)});
+}
+const esc=t=>String(t).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+
 /* ─────────── ЭКРАН ДЛЯ МАМЫ ─────────── */
 function parent_(){
   const done=SKILLS.filter(s=>S.skills[s.id].status==='green').length;
@@ -357,7 +461,39 @@ function parent_(){
       <td class="n">${l.d.slice(8)}.${l.d.slice(5,7)}</td>
       <td>${skill(l.sid).icon} ${skill(l.sid).name}</td>
       <td class="n" style="text-align:right">${l.c} из ${l.n}</td></tr>`).join('')}</tbody></table>`:''}
+    <h2 style="margin-top:34px">Грузовой отсек</h2>
+    <p style="font-size:15px;color:var(--ink-dim)">Денис заработал <b class="mono" style="color:var(--amber)">${S.earned}</b> коинов,
+    на счету сейчас <b class="mono" style="color:var(--amber)">${S.coins}</b>.
+    Призы и цены задаёте вы — сотрите примеры и впишите то, что ему правда хочется.</p>
+    <div class="prizes" id="ppz"></div>
+    <div class="addrow">
+      <input id="pn" placeholder="Что это — например, поход в планетарий" autocomplete="off">
+      <input id="pg" placeholder="коины" inputmode="numeric" autocomplete="off">
+      <button class="btn" id="padd">Добавить</button>
+    </div>
+    ${S.orders.filter(o=>!o.done).length?`<h2 style="margin-top:30px">Заказы ждут вас</h2>
+      <div class="prizes">${S.orders.filter(o=>!o.done).map(o=>`<div class="ord">
+        <span class="nm">${esc(o.n)}</span><span class="mono" style="color:var(--ink-faint);font-size:13px">${o.d}</span>
+        <button class="btn" data-give="${o.id}" style="padding:8px 14px;font-size:12px">Выдала</button>
+        <button class="btn ghost" data-undo="${o.id}" style="padding:8px 14px;font-size:12px">Вернуть коины</button>
+      </div>`).join('')}</div>`:''}
     <p class="foot">Прогресс хранится в этом браузере. <button class="btn ghost" id="rs" style="padding:6px 12px;font-size:12px">Сбросить всё</button></p>`;
+  const pb=document.getElementById('ppz');
+  pb.innerHTML=S.prizes.length?'':`<div class="pz"><span class="nm" style="color:var(--ink-faint)">Список пуст</span></div>`;
+  S.prizes.forEach(p=>{const d=document.createElement('div');d.className='pz'+(p.demo?' demo':'');
+    d.innerHTML=`<span class="nm">${esc(p.n)}</span><span class="pr">${p.g} <span style="font-size:13px">коинов</span></span>`;
+    const x=document.createElement('button');x.className='x';x.textContent='×';x.title='Убрать';
+    x.onclick=()=>{S.prizes=S.prizes.filter(q=>q.id!==p.id);save();render()};
+    d.appendChild(x);pb.appendChild(d)});
+  document.getElementById('padd').onclick=()=>{
+    const n=document.getElementById('pn').value.trim(),g=parseInt(document.getElementById('pg').value,10);
+    if(!n||!(g>0)){alert('Напишите название и цену в коинах');return}
+    S.prizes.push({id:'p'+Date.now(),n,g});save();render()};
+  V.querySelectorAll('[data-give]').forEach(b=>b.onclick=()=>{
+    const o=S.orders.find(o=>o.id==b.dataset.give);o.done=true;save();render()});
+  V.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>{
+    const o=S.orders.find(o=>o.id==b.dataset.undo);S.coins+=o.g;
+    S.orders=S.orders.filter(x=>x.id!=o.id);save();render()});
   document.getElementById('rs').onclick=()=>{if(confirm('Стереть весь прогресс Дениса?')){S=blank();save();go('home')}};
 }
 render();
