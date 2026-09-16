@@ -1,0 +1,364 @@
+<title>Mission Control English</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --void:#070B18; --hull:#0E1526; --hull2:#141D33; --line:#22304F;
+  --ink:#E8EDF7; --ink-dim:#93A2C0; --ink-faint:#5E6E90;
+  --amber:#FFB454; --amber-soft:#3A2A12;
+  --go:#4ADE80; --go-soft:#10301F;
+  --warn:#FBBF24;
+  --fail:#F2555A; --fail-soft:#361419;
+  --disp:"Chakra Petch",system-ui,sans-serif;
+  --body:"Source Sans 3",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--void);color:var(--ink);font-family:var(--body);
+  font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(1200px 700px at 78% -12%, #16224080, transparent 60%),
+                   radial-gradient(900px 600px at 5% 105%, #1A1330a0, transparent 65%);
+  background-attachment:fixed;}
+.shell{max-width:920px;margin:0 auto;padding-block:18px 64px;padding-left:18px;padding-right:18px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint)}
+
+/* ── верхняя телеметрия ── */
+.tele{display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  border:1px solid var(--line);background:linear-gradient(180deg,var(--hull2),var(--hull));
+  padding:9px 12px;margin-bottom:22px}
+.tele .sig{width:8px;height:8px;background:var(--go);box-shadow:0 0 10px var(--go);flex:none}
+.tele b{font-family:var(--disp);font-weight:700;letter-spacing:.06em;font-size:14px}
+.tele .sp{flex:1}
+.tele .cell{font-family:var(--mono);font-size:12px;color:var(--ink-dim);white-space:nowrap}
+.tele .cell i{font-style:normal;color:var(--amber)}
+.tele .tab{background:none;border:1px solid transparent;padding:3px 9px;font-family:var(--mono);
+  font-size:12px;color:var(--ink-faint)}
+.tele .tab[aria-current="true"]{border-color:var(--line);background:#0b1020;color:var(--ink)}
+
+h1{font-family:var(--disp);font-weight:700;font-size:clamp(28px,6vw,42px);line-height:1.08;
+  letter-spacing:-.01em;margin:0 0 10px;text-wrap:balance}
+h2{font-family:var(--disp);font-weight:600;font-size:20px;letter-spacing:.01em;margin:0 0 12px}
+p{margin:0 0 14px;max-width:62ch}
+.lead{color:var(--ink-dim);font-size:18px}
+
+.btn{font-family:var(--disp);font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  font-size:14px;background:var(--amber);color:#1B1206;border:0;padding:13px 22px}
+.btn:hover{background:#FFC776}
+.btn.ghost{background:none;color:var(--ink-dim);border:1px solid var(--line);}
+.btn.ghost:hover{color:var(--ink);border-color:var(--ink-faint)}
+
+/* ── карта станции ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line)}
+.bay{background:var(--hull);padding:14px 14px 14px 16px;position:relative;text-align:left;
+  border:0;display:flex;flex-direction:column;gap:5px;min-height:112px;width:100%}
+.bay::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--ink-faint)}
+.bay.green::before{background:var(--go);box-shadow:0 0 12px #4ADE8055}
+.bay.amber::before{background:var(--warn)}
+.bay.red::before{background:var(--fail);box-shadow:0 0 12px #F2555A55}
+.bay:hover{background:var(--hull2)}
+.bay .ico{font-size:20px;line-height:1}
+.bay .nm{font-family:var(--disp);font-weight:600;font-size:17px}
+.bay .full{font-size:13px;color:var(--ink-faint);line-height:1.35}
+.bay .st{margin-top:auto;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.bay.green .st{color:var(--go)} .bay.amber .st{color:var(--warn)}
+.bay.red .st{color:var(--fail)} .bay.unknown .st{color:var(--ink-faint)}
+.bay .bar{height:3px;background:#1a2340;margin-top:6px}
+.bay .bar span{display:block;height:100%;background:var(--amber)}
+
+/* ── задание ── */
+.panel{border:1px solid var(--line);background:var(--hull);padding:20px}
+.qhead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.q{font-size:clamp(20px,3.6vw,26px);line-height:1.45;font-weight:600;margin:0 0 20px;
+  white-space:pre-wrap;max-width:none}
+.q.txt{font-size:17px;font-weight:400;line-height:1.6}
+.opts{display:grid;gap:9px}
+.opt{text-align:left;background:var(--hull2);border:1px solid var(--line);padding:13px 16px;
+  font-size:19px;font-family:var(--body);display:flex;gap:12px;align-items:center}
+.opt:hover:not(:disabled){border-color:var(--amber);background:#1b2540}
+.opt:disabled{cursor:default;opacity:.55}
+.opt .k{font-family:var(--mono);font-size:12px;color:var(--ink-faint);flex:none;width:14px}
+.opt.right{border-color:var(--go);background:var(--go-soft);opacity:1}
+.opt.wrong{border-color:var(--fail);background:var(--fail-soft);opacity:1}
+
+/* ── разбор ── */
+.debrief{border:1px solid var(--line);border-left:4px solid var(--amber);background:#0B1223;
+  padding:18px;margin-top:18px;display:grid;gap:14px}
+.debrief .row{display:grid;gap:4px}
+.debrief .lb{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber)}
+.debrief .tx{font-size:17px;line-height:1.55}
+.debrief .ex{font-family:var(--mono);font-size:15px;color:var(--go);background:#0a1a12;
+  padding:8px 12px;border-left:2px solid var(--go)}
+.check{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:2px}
+.check input{font-family:var(--mono);font-size:17px;background:#050912;color:var(--ink);
+  border:1px solid var(--line);padding:10px 12px;min-width:200px;flex:1}
+.check input:focus{border-color:var(--amber);outline:none}
+.verdict{font-family:var(--mono);font-size:14px}
+.verdict.ok{color:var(--go)} .verdict.no{color:var(--fail)}
+
+/* ── прогресс миссии ── */
+.pips{display:flex;gap:4px}
+.pips i{width:22px;height:4px;background:#1a2340;display:block}
+.pips i.done{background:var(--go)} .pips i.miss{background:var(--fail)} .pips i.now{background:var(--amber)}
+
+/* ── планета ── */
+.planet{border:1px solid var(--go);background:linear-gradient(180deg,var(--go-soft),var(--hull));
+  padding:24px;text-align:center}
+.planet .nm{font-family:var(--disp);font-size:30px;font-weight:700;letter-spacing:.04em;margin:8px 0 12px}
+.planet .fact{font-size:17px;line-height:1.6;color:var(--ink);max-width:54ch;margin:0 auto 18px;font-style:italic}
+
+/* ── родительский экран ── */
+table{width:100%;border-collapse:collapse;font-size:15px}
+th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-faint);font-weight:400;padding:0 10px 8px 0;border-bottom:1px solid var(--line)}
+td{padding:11px 10px 11px 0;border-bottom:1px solid #16203a;vertical-align:middle}
+td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-dim)}
+.chip{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;white-space:nowrap}
+.chip.green{color:var(--go);background:var(--go-soft)} .chip.amber{color:var(--warn);background:var(--amber-soft)}
+.chip.red{color:var(--fail);background:var(--fail-soft)} .chip.unknown{color:var(--ink-faint);background:#151d31}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);margin-bottom:24px}
+.stats div{background:var(--hull);padding:14px}
+.stats .v{font-family:var(--disp);font-size:28px;font-weight:700;line-height:1;margin-bottom:5px}
+.stats .l{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
+.foot{margin-top:28px;font-size:13px;color:var(--ink-faint);font-family:var(--mono)}
+@media (prefers-reduced-motion:no-preference){
+  .flash{animation:fl .45s ease-out}
+  @keyframes fl{from{background:#14351f}to{background:var(--hull)}}
+}
+@media(max-width:480px){.opt{font-size:17px}.tele{font-size:11px}}
+</style>
+
+<div class="shell">
+  <div class="tele" id="tele"></div>
+  <main id="view"></main>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script src="bank.js"></script>
+<script>
+const KEY='mce_denis_v1';
+const blank=()=>({name:'DENIS',started:null,days:[],skills:Object.fromEntries(SKILLS.map(s=>[s.id,
+  {status:'unknown',seen:0,first:0,planet:false}])),diag:null,log:[]});
+let S=load();
+function load(){try{const r=localStorage.getItem(KEY);if(r)return Object.assign(blank(),JSON.parse(r))}catch(e){}return blank()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const today=()=>new Date().toISOString().slice(0,10);
+function markDay(){const d=today();if(!S.days.includes(d))S.days.push(d);save()}
+function streak(){let n=0,d=new Date();for(;;){const k=d.toISOString().slice(0,10);
+  if(S.days.includes(k)){n++;d.setDate(d.getDate()-1)}else if(n===0&&k===today()){d.setDate(d.getDate()-1)}else break}
+  return n}
+const norm=t=>t.toLowerCase().trim().replace(/[.!?,]+$/,'').replace(/\s+/g,' ');
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const STL={green:'ИСПРАВЕН',amber:'ШАТКО',red:'ПОВРЕЖДЕНИЕ',unknown:'НЕ ПРОВЕРЕН'};
+const skill=id=>SKILLS.find(s=>s.id===id);
+const V=document.getElementById('view');
+let route='home';
+
+/* ─────────── ТЕЛЕМЕТРИЯ ─────────── */
+function tele(){
+  const t=document.getElementById('tele');
+  const ok=SKILLS.filter(s=>S.skills[s.id].status==='green').length;
+  t.innerHTML=`<span class="sig"></span><b>MISSION CONTROL</b>
+    <span class="cell">СТАЖЁР <i>${S.name}</i></span>
+    <span class="cell">ОТСЕКИ <i>${ok}/9</i></span>
+    <span class="cell">ДНЕЙ ПОДРЯД <i>${streak()}</i></span>
+    <span class="sp"></span>`;
+  [['home','Станция'],['parent','Для мамы']].forEach(([r,l])=>{
+    const b=document.createElement('button');b.className='tab';b.textContent=l;
+    b.setAttribute('aria-current',route===r);b.onclick=()=>go(r);t.appendChild(b)});
+}
+function go(r){route=r;render()}
+function render(){tele();({home:home,parent:parent_,diag:()=>{},mission:()=>{}})[route]?.();
+  document.getElementById('foot').textContent=S.diag?`Диагностика пройдена ${S.diag}. Прогресс сохраняется в этом браузере.`:'';}
+
+/* ─────────── ГЛАВНЫЙ ЭКРАН ─────────── */
+function home(){
+  if(!S.diag){
+    V.innerHTML=`<div class="eyebrow">Допуск к полёту</div>
+      <h1>Станция ждёт стажёра</h1>
+      <p class="lead">Денис, на борту сбоит бортовой английский. Девять отсеков — девять систем языка.
+      Пока непонятно, какие из них целы. Первый полёт — это проверка: 18 вопросов, минут двадцать.
+      Ошибаться можно и нужно — так приборы и находят поломку.</p>
+      <p style="color:var(--ink-faint);font-size:15px">Ничего не нужно учить заранее. Просто отвечай как думаешь.</p>
+      <button class="btn" id="go">Начать проверку систем</button>`;
+    document.getElementById('go').onclick=startDiag;return;
+  }
+  const broken=SKILLS.filter(s=>S.skills[s.id].status!=='green');
+  const target=pickTarget();
+  V.innerHTML=`<div class="eyebrow">Карта станции</div>
+    <h1>${broken.length?'Отсеков под ремонтом: '+broken.length:'Все системы исправны'}</h1>
+    <p class="lead">${broken.length
+      ? 'Сегодняшняя миссия — отсек «'+skill(target).name+'». Шесть заданий, минут пятнадцать.'
+      : 'Денис, станция полностью твоя. Можно зайти в любой отсек и потренироваться просто так.'}</p>
+    <p><button class="btn" id="go">${broken.length?'Миссия дня — '+skill(target).name:'Свободная тренировка'}</button></p>
+    <div class="grid" id="grid"></div>`;
+  document.getElementById('go').onclick=()=>startMission(target);
+  const g=document.getElementById('grid');
+  SKILLS.forEach(s=>{const st=S.skills[s.id];
+    const b=document.createElement('button');b.className='bay '+st.status;
+    const pct=st.seen?Math.round(st.first/st.seen*100):0;
+    b.innerHTML=`<span class="ico">${s.icon}</span><span class="nm">${s.name}</span>
+      <span class="full">${s.full}</span>
+      <span class="st">${STL[st.status]}${st.planet?' · '+PLANETS[s.id].n:''}</span>
+      ${st.seen?`<span class="bar"><span style="width:${pct}%"></span></span>`:''}`;
+    b.onclick=()=>startMission(s.id);g.appendChild(b)});
+}
+function pickTarget(){
+  const rank={red:0,unknown:1,amber:2,green:3};
+  return SKILLS.slice().sort((a,b)=>rank[S.skills[a.id].status]-rank[S.skills[b.id].status])[0].id;
+}
+
+/* ─────────── ДИАГНОСТИКА ─────────── */
+function startDiag(){
+  route='diag';
+  const qs=[];SKILLS.forEach(s=>shuffle(BANK[s.id]).slice(0,2).forEach(q=>qs.push({sid:s.id,q})));
+  runSet(shuffle(qs),{mode:'diag',title:'Проверка систем'},res=>{
+    SKILLS.forEach(s=>{const c=res.filter(r=>r.sid===s.id&&r.ok).length;
+      S.skills[s.id].status=c===2?'green':c===1?'amber':'red';
+      S.skills[s.id].seen+=2;S.skills[s.id].first+=c;
+      if(c===2)S.skills[s.id].planet=true});
+    S.diag=new Date().toLocaleDateString('ru-RU');markDay();save();
+    const bad=SKILLS.filter(s=>S.skills[s.id].status==='red');
+    V.innerHTML=`<div class="eyebrow">Отчёт бортового компьютера</div>
+      <h1>Диагностика закончена</h1>
+      <p class="lead">${bad.length?'Повреждений найдено: '+bad.length+'. Чинить будем по одному — по отсеку за раз.'
+        :'Крупных поломок нет. Подтянем то, что шатается.'}</p>
+      <p><button class="btn" id="ok">Смотреть карту станции</button></p>`;
+    document.getElementById('ok').onclick=()=>go('home');
+  });
+}
+
+/* ─────────── МИССИЯ ─────────── */
+function startMission(sid){
+  route='mission';const s=skill(sid);
+  const qs=shuffle(BANK[sid]).slice(0,6).map(q=>({sid,q}));
+  runSet(qs,{mode:'mission',title:s.icon+' '+s.name},res=>{
+    const c=res.filter(r=>r.ok).length;const st=S.skills[sid];
+    st.seen+=res.length;st.first+=c;
+    const was=st.status;
+    st.status=c>=5?'green':c>=3?'amber':'red';
+    markDay();S.log.push({d:today(),sid,c,n:res.length});save();
+    const newPlanet=st.status==='green'&&!st.planet;
+    if(newPlanet)st.planet=true;save();
+    const p=PLANETS[sid];
+    V.innerHTML=`<div class="eyebrow">Миссия завершена</div>
+      <h1>${c} из ${res.length} с первого раза</h1>
+      <p class="lead">${st.status==='green'?'Отсек «'+s.name+'» исправен. Курс свободен.'
+        :st.status==='amber'?'Отсек «'+s.name+'» держится, но шатается. Завтра добьём.'
+        :'Отсек «'+s.name+'» ещё повреждён. Это нормально — вернёмся завтра, станет легче.'}</p>
+      ${newPlanet?`<div class="planet"><div class="eyebrow">Открыта новая точка маршрута</div>
+        <div class="nm">${p.n}</div><div class="fact">${p.f}</div></div>`:''}
+      <p style="margin-top:20px"><button class="btn" id="ok">На станцию</button></p>`;
+    document.getElementById('ok').onclick=()=>go('home');
+  });
+}
+
+/* ─────────── ДВИЖОК ЗАДАНИЙ ─────────── */
+function runSet(items,opt,done){
+  let i=0;const res=[];
+  step();
+  function step(){
+    if(i>=items.length){done(res);return}
+    const {sid,q}=items[i];
+    const correct=q.o[0];
+    const opts=shuffle(q.o);
+    const isText=q.q.length>140;
+    V.innerHTML=`<div class="panel">
+        <div class="qhead">
+          <div><div class="eyebrow">${opt.title}</div>
+          <div class="mono" style="font-size:12px;color:var(--ink-faint)">${skill(sid).full}</div></div>
+          <div class="pips" id="pips"></div>
+        </div>
+        <div class="q${isText?' txt':''}">${q.q.replace(/</g,'&lt;')}</div>
+        <div class="opts" id="opts"></div>
+        <div id="db"></div>
+      </div>`;
+    const pips=document.getElementById('pips');
+    items.forEach((_,k)=>{const el=document.createElement('i');
+      el.className=k<i?(res[k].ok?'done':'miss'):k===i?'now':'';pips.appendChild(el)});
+    const box=document.getElementById('opts');
+    opts.forEach((o,k)=>{const b=document.createElement('button');b.className='opt';
+      b.innerHTML=`<span class="k">${'ABCD'[k]}</span><span>${o.replace(/</g,'&lt;')}</span>`;
+      b.dataset.v=o;b.onclick=()=>answer(b,o);box.appendChild(b)});
+
+    function answer(btn,chosen){
+      const ok=chosen===correct;
+      [...box.children].forEach(b=>b.disabled=true);
+      btn.classList.add(ok?'right':'wrong');
+      if(!ok)[...box.children].find(b=>b.dataset.v===correct)?.classList.add('right');
+      res[i]={sid,ok};
+      if(ok){btn.classList.add('flash');setTimeout(()=>{i++;step()},560);return}
+      debrief();
+    }
+    function debrief(){
+      const d=document.getElementById('db');
+      d.className='debrief';
+      d.innerHTML=`
+        <div class="row"><div class="lb">Что не так</div><div class="tx">${q.why}</div></div>
+        <div class="row"><div class="lb">Правило</div><div class="tx">${q.rule}</div></div>
+        <div class="row"><div class="lb">Как это звучит</div><div class="ex">${q.ex.replace(/</g,'&lt;')}</div></div>
+        <div class="row"><div class="lb">Проверим сразу</div><div class="tx">${q.up.q.replace(/</g,'&lt;')}</div>
+          <div class="check"><input id="in" autocomplete="off" spellcheck="false" placeholder="напиши ответ">
+          <button class="btn" id="ck">Ответить</button></div>
+          <div class="verdict" id="vd"></div></div>`;
+      const inp=document.getElementById('in'),vd=document.getElementById('vd');
+      let tries=0;inp.focus();
+      const check=()=>{
+        if(norm(inp.value)===norm(q.up.a)){
+          vd.className='verdict ok';vd.textContent='✓ Верно. Поехали дальше.';
+          document.getElementById('ck').textContent='Дальше';
+          document.getElementById('ck').onclick=()=>{i++;step()};
+          inp.disabled=true;inp.onkeydown=null;
+          document.getElementById('ck').focus();return}
+        tries++;
+        if(tries===1){vd.className='verdict no';vd.textContent='Не совсем. Посмотри на правило выше и попробуй ещё раз.'}
+        else{vd.className='verdict';vd.innerHTML=`<span style="color:var(--amber)">Зайдём с другой стороны:</span>
+          <span style="color:var(--ink);font-family:var(--body);font-size:16px">${q.again}</span><br>
+          <span style="color:var(--go)">Ответ: ${q.up.a}</span>`;
+          document.getElementById('ck').textContent='Понятно, дальше';
+          document.getElementById('ck').onclick=()=>{i++;step()}}
+      };
+      document.getElementById('ck').onclick=check;
+      inp.onkeydown=e=>{if(e.key==='Enter')document.getElementById('ck').click()};
+    }
+  }
+}
+
+/* ─────────── ЭКРАН ДЛЯ МАМЫ ─────────── */
+function parent_(){
+  const done=SKILLS.filter(s=>S.skills[s.id].status==='green').length;
+  const tot=SKILLS.reduce((a,s)=>a+S.skills[s.id].seen,0);
+  const fir=SKILLS.reduce((a,s)=>a+S.skills[s.id].first,0);
+  const week=S.log.filter(l=>l.d>=new Date(Date.now()-6*864e5).toISOString().slice(0,10));
+  V.innerHTML=`<div class="eyebrow">Сводка по навыкам</div>
+    <h1>Что у Дениса с английским</h1>
+    <p class="lead">Не баллы, а состояние девяти систем языка по американской программе Grade 3–4.
+    Красное — то, что нужно чинить; жёлтое — знает, но плавает.</p>
+    <div class="stats">
+      <div><div class="v" style="color:var(--go)">${done}<span style="color:var(--ink-faint);font-size:16px">/9</span></div><div class="l">Отсеков закрыто</div></div>
+      <div><div class="v">${tot?Math.round(fir/tot*100):0}%</div><div class="l">Верно с 1 раза</div></div>
+      <div><div class="v">${streak()}</div><div class="l">Дней подряд</div></div>
+      <div><div class="v">${week.length}</div><div class="l">Миссий за неделю</div></div>
+    </div>
+    <table><thead><tr><th>Отсек</th><th>Что это</th><th>Состояние</th><th style="text-align:right">Решено</th><th style="text-align:right">С 1 раза</th></tr></thead>
+    <tbody>${SKILLS.map(s=>{const t=S.skills[s.id];return `<tr>
+      <td style="font-family:var(--disp);font-weight:600">${s.icon} ${s.name}</td>
+      <td style="color:var(--ink-faint);font-size:14px">${s.full}</td>
+      <td><span class="chip ${t.status}">${STL[t.status]}</span></td>
+      <td class="n" style="text-align:right">${t.seen}</td>
+      <td class="n" style="text-align:right">${t.seen?Math.round(t.first/t.seen*100)+'%':'—'}</td>
+    </tr>`}).join('')}</tbody></table>
+    ${S.log.length?`<h2 style="margin-top:32px">Последние миссии</h2>
+    <table><tbody>${S.log.slice(-8).reverse().map(l=>`<tr>
+      <td class="n">${l.d.slice(8)}.${l.d.slice(5,7)}</td>
+      <td>${skill(l.sid).icon} ${skill(l.sid).name}</td>
+      <td class="n" style="text-align:right">${l.c} из ${l.n}</td></tr>`).join('')}</tbody></table>`:''}
+    <p class="foot">Прогресс хранится в этом браузере. <button class="btn ghost" id="rs" style="padding:6px 12px;font-size:12px">Сбросить всё</button></p>`;
+  document.getElementById('rs').onclick=()=>{if(confirm('Стереть весь прогресс Дениса?')){S=blank();save();go('home')}};
+}
+render();
+</script>
