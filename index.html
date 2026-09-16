@@ -34,6 +34,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 .tele .sp{flex:1}
 .tele .cell{font-family:var(--mono);font-size:12px;color:var(--ink-dim);white-space:nowrap}
 .tele .cell i{font-style:normal;color:var(--amber)}
+.tele .link{font-family:var(--mono);font-size:11px;letter-spacing:.08em;padding:2px 7px;white-space:nowrap}
+.tele .link.on{color:var(--go);background:var(--go-soft)}
+.tele .link.off{color:var(--ink-faint);background:#151d31}
 .tele .tab{background:none;border:1px solid transparent;padding:3px 9px;font-family:var(--mono);
   font-size:12px;color:var(--ink-faint)}
 .tele .tab[aria-current="true"]{border-color:var(--line);background:#0b1020;color:var(--ink)}
@@ -182,6 +185,7 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-d
   <div class="foot" id="foot"></div>
 </div>
 
+<script src="config.js"></script>
 <script src="bank.js"></script>
 <script>
 const KEY='mce_denis_v1';
@@ -193,10 +197,11 @@ const PRIZES0=[
 ];
 const blank=()=>({name:'DENIS',started:null,days:[],skills:Object.fromEntries(SKILLS.map(s=>[s.id,
   {status:'unknown',seen:0,first:0,planet:false}])),diag:null,log:[],
-  pin:null,coins:0,earned:0,prizes:PRIZES0.slice(),orders:[]});
+  station:null,pin:null,coins:0,earned:0,prizes:PRIZES0.slice(),orders:[]});
 let S=load();
 function load(){try{const r=localStorage.getItem(KEY);if(r)return Object.assign(blank(),JSON.parse(r))}catch(e){}return blank()}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+  if(hasCfg()&&S.station){clearTimeout(SYNC.t);SYNC.t=setTimeout(push,900)}}
 const today=()=>new Date().toISOString().slice(0,10);
 function markDay(){const d=today();if(!S.days.includes(d))S.days.push(d);save()}
 function streak(){let n=0,d=new Date();for(;;){const k=d.toISOString().slice(0,10);
@@ -220,7 +225,8 @@ function tele(){
     <span class="cell">ОТСЕКИ <i>${ok}/9</i></span>
     <span class="cell">ДНЕЙ ПОДРЯД <i>${streak()}</i></span>
     <span class="cell">КОИНЫ <i>${S.coins}</i></span>
-    <span class="sp"></span>`;
+    <span class="sp"></span>
+    ${hasCfg()?`<span class="link ${SYNC.on?'on':'off'}">${SYNC.on?'◉ связь с Землёй':'○ нет связи'}</span>`:''}`;
   [['home','Станция'],['cargo','Грузовой отсек'],['parent','🔒 Для мамы']].forEach(([r,l])=>{
     const b=document.createElement('button');b.className='tab';b.textContent=l;
     b.setAttribute('aria-current',route===r);b.onclick=()=>go(r);t.appendChild(b)});
@@ -229,8 +235,87 @@ function go(r){route=r;render()}
 function render(){tele();({home:home,cargo:cargo,parent:parent_,diag:()=>{},mission:()=>{}})[route]?.();
   document.getElementById('foot').textContent=S.diag?`Диагностика пройдена ${S.diag}. Прогресс сохраняется в этом браузере.`:'';}
 
+
+/* ─────────── СВЯЗЬ С ЗЕМЛЁЙ (синхронизация) ─────────── */
+const SYNC={on:false,busy:false,dirty:false,last:0};
+const hasCfg=()=>typeof CFG!=='undefined'&&CFG.url&&CFG.anon;
+const sbHead=()=>({apikey:CFG.anon,Authorization:'Bearer '+CFG.anon,'Content-Type':'application/json'});
+
+async function pull(){
+  if(!hasCfg()||!S.station)return false;
+  try{
+    const r=await fetch(`${CFG.url}/rest/v1/stations?id=eq.${encodeURIComponent(S.station)}&select=data,updated_at`,
+      {headers:sbHead()});
+    if(!r.ok)throw 0;
+    const rows=await r.json();
+    SYNC.on=true;
+    if(!rows.length)return false;
+    const remote=rows[0].data;
+    if(remote&&JSON.stringify(remote)!==JSON.stringify(stripLocal(S))){
+      const keep={pin:S.pin,station:S.station};
+      S=Object.assign(blank(),remote,keep);
+      try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+      return true;
+    }
+    return false;
+  }catch(e){SYNC.on=false;return false}
+}
+function stripLocal(o){const c=JSON.parse(JSON.stringify(o));delete c.pin;delete c.station;return c}
+
+async function push(){
+  if(!hasCfg()||!S.station||SYNC.busy)return;
+  SYNC.busy=true;
+  try{
+    const r=await fetch(`${CFG.url}/rest/v1/stations`,{method:'POST',
+      headers:Object.assign(sbHead(),{Prefer:'resolution=merge-duplicates'}),
+      body:JSON.stringify({id:S.station,data:stripLocal(S),updated_at:new Date().toISOString()})});
+    SYNC.on=r.ok;
+  }catch(e){SYNC.on=false}
+  SYNC.busy=false;
+}
+
+function startSync(){
+  if(!hasCfg()||!S.station)return;
+  pull().then(ch=>{if(ch)render();tele()});
+  setInterval(async()=>{
+    if(document.hidden)return;
+    const ch=await pull();
+    if(ch&&(route==='home'||route==='cargo'||route==='parent'))render();
+    tele();
+  },12000);
+}
+
+function stationScreen(){
+  V.innerHTML=`<div class="eyebrow">Связь с Землёй</div>
+    <h1>Код станции</h1>
+    <p class="lead">Придумай короткий код — по нему станция узнаёт тебя на любом устройстве.
+    Тот же код мама вводит у себя на телефоне, чтобы видеть, как идут дела.</p>
+    <div class="lock">
+      <h2>Латинские буквы и цифры</h2>
+      <p>Например DENIS2026. Запиши его — он один на всех, кто заходит на твою станцию.</p>
+      <div class="pinrow">
+        <input id="st" maxlength="20" autocomplete="off" placeholder="DENIS2026"
+          style="letter-spacing:.1em;font-size:20px;width:230px;text-align:left">
+        <button class="btn" id="stgo">Выйти на связь</button>
+      </div>
+      <div class="err" id="sterr"></div>
+    </div>`;
+  const inp=document.getElementById('st'),err=document.getElementById('sterr');
+  inp.focus();
+  const act=async()=>{
+    const v=inp.value.trim().toUpperCase().replace(/\s+/g,'');
+    if(!/^[A-Z0-9-]{4,20}$/.test(v)){err.textContent='4–20 символов: латиница, цифры, дефис';return}
+    S.station=v;save();
+    err.style.color='var(--ink-dim)';err.textContent='Выхожу на связь…';
+    await pull();await push();startSync();go('home');
+  };
+  document.getElementById('stgo').onclick=act;
+  inp.onkeydown=e=>{if(e.key==='Enter')act()};
+}
+
 /* ─────────── ГЛАВНЫЙ ЭКРАН ─────────── */
 function home(){
+  if(hasCfg()&&!S.station){stationScreen();return}
   if(!S.diag){
     V.innerHTML=`<div class="eyebrow">Допуск к полёту</div>
       <h1>Станция ждёт стажёра</h1>
@@ -541,4 +626,5 @@ function parentScreen(){
   document.getElementById('rs').onclick=()=>{if(confirm('Стереть весь прогресс Дениса?')){S=blank();unlocked=false;save();go('home')}};
 }
 render();
+startSync();
 </script>
