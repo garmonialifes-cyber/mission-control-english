@@ -125,6 +125,16 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-d
 .stats .v{font-family:var(--disp);font-size:28px;font-weight:700;line-height:1;margin-bottom:5px}
 .stats .l{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
 .foot{margin-top:28px;font-size:13px;color:var(--ink-faint);font-family:var(--mono)}
+/* ── замок родительской вкладки ── */
+.lock{border:1px solid var(--line);background:var(--hull);padding:26px;max-width:430px}
+.lock h2{margin-bottom:8px}
+.lock p{font-size:15px;color:var(--ink-dim)}
+.lock .pinrow{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}
+.lock input{font-family:var(--mono);font-size:26px;letter-spacing:.42em;background:#050912;color:var(--ink);
+  border:1px solid var(--line);padding:11px 14px;width:150px;text-align:center}
+.lock input:focus{border-color:var(--amber);outline:none}
+.lock .err{color:var(--fail);font-family:var(--mono);font-size:13px;margin-top:10px;min-height:18px}
+
 /* ── грузовой отсек ── */
 .bal{border:1px solid var(--amber);background:linear-gradient(180deg,#2A1D08,var(--hull));
   padding:22px 24px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
@@ -183,7 +193,7 @@ const PRIZES0=[
 ];
 const blank=()=>({name:'DENIS',started:null,days:[],skills:Object.fromEntries(SKILLS.map(s=>[s.id,
   {status:'unknown',seen:0,first:0,planet:false}])),diag:null,log:[],
-  coins:0,earned:0,prizes:PRIZES0.slice(),orders:[]});
+  pin:null,coins:0,earned:0,prizes:PRIZES0.slice(),orders:[]});
 let S=load();
 function load(){try{const r=localStorage.getItem(KEY);if(r)return Object.assign(blank(),JSON.parse(r))}catch(e){}return blank()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
@@ -211,7 +221,7 @@ function tele(){
     <span class="cell">ДНЕЙ ПОДРЯД <i>${streak()}</i></span>
     <span class="cell">КОИНЫ <i>${S.coins}</i></span>
     <span class="sp"></span>`;
-  [['home','Станция'],['cargo','Грузовой отсек'],['parent','Для мамы']].forEach(([r,l])=>{
+  [['home','Станция'],['cargo','Грузовой отсек'],['parent','🔒 Для мамы']].forEach(([r,l])=>{
     const b=document.createElement('button');b.className='tab';b.textContent=l;
     b.setAttribute('aria-current',route===r);b.onclick=()=>go(r);t.appendChild(b)});
 }
@@ -433,7 +443,39 @@ function cargo(){
 const esc=t=>String(t).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
 
 /* ─────────── ЭКРАН ДЛЯ МАМЫ ─────────── */
+let unlocked=false;
 function parent_(){
+  if(!unlocked){lockScreen();return}
+  parentScreen();
+}
+function lockScreen(){
+  const first=!S.pin;
+  V.innerHTML=`<div class="eyebrow">Закрытый раздел</div>
+    <h1>${first?'Придумайте код':'Введите код'}</h1>
+    <div class="lock">
+      <h2>${first?'Четыре цифры':'Раздел для взрослого'}</h2>
+      <p>${first
+        ? 'Здесь видно все ошибки Дениса и настраиваются призы. Денису сюда не надо. Придумайте код из четырёх цифр и запишите его — восстановить будет нельзя.'
+        : 'Денис, это не твоя вкладка — возвращайся на станцию.'}</p>
+      <div class="pinrow">
+        <input id="pin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="····">
+        <button class="btn" id="pgo">${first?'Поставить':'Открыть'}</button>
+      </div>
+      <div class="err" id="perr"></div>
+    </div>`;
+  const inp=document.getElementById('pin'),err=document.getElementById('perr');
+  inp.focus();
+  const act=()=>{
+    const v=inp.value.trim();
+    if(!/^\d{4}$/.test(v)){err.textContent='Нужно ровно четыре цифры';return}
+    if(first){S.pin=v;save();unlocked=true;render();return}
+    if(v===S.pin){unlocked=true;render()}
+    else{err.textContent='Код не тот';inp.value='';inp.focus()}
+  };
+  document.getElementById('pgo').onclick=act;
+  inp.onkeydown=e=>{if(e.key==='Enter')act()};
+}
+function parentScreen(){
   const done=SKILLS.filter(s=>S.skills[s.id].status==='green').length;
   const tot=SKILLS.reduce((a,s)=>a+S.skills[s.id].seen,0);
   const fir=SKILLS.reduce((a,s)=>a+S.skills[s.id].first,0);
@@ -477,7 +519,8 @@ function parent_(){
         <button class="btn" data-give="${o.id}" style="padding:8px 14px;font-size:12px">Выдала</button>
         <button class="btn ghost" data-undo="${o.id}" style="padding:8px 14px;font-size:12px">Вернуть коины</button>
       </div>`).join('')}</div>`:''}
-    <p class="foot">Прогресс хранится в этом браузере. <button class="btn ghost" id="rs" style="padding:6px 12px;font-size:12px">Сбросить всё</button></p>`;
+    <p class="foot">Прогресс хранится в этом браузере. <button class="btn ghost" id="lk" style="padding:6px 12px;font-size:12px">Закрыть раздел</button>
+    <button class="btn ghost" id="rs" style="padding:6px 12px;font-size:12px">Сбросить всё</button></p>`;
   const pb=document.getElementById('ppz');
   pb.innerHTML=S.prizes.length?'':`<div class="pz"><span class="nm" style="color:var(--ink-faint)">Список пуст</span></div>`;
   S.prizes.forEach(p=>{const d=document.createElement('div');d.className='pz'+(p.demo?' demo':'');
@@ -494,7 +537,8 @@ function parent_(){
   V.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>{
     const o=S.orders.find(o=>o.id==b.dataset.undo);S.coins+=o.g;
     S.orders=S.orders.filter(x=>x.id!=o.id);save();render()});
-  document.getElementById('rs').onclick=()=>{if(confirm('Стереть весь прогресс Дениса?')){S=blank();save();go('home')}};
+  document.getElementById('lk').onclick=()=>{unlocked=false;go('home')};
+  document.getElementById('rs').onclick=()=>{if(confirm('Стереть весь прогресс Дениса?')){S=blank();unlocked=false;save();go('home')}};
 }
 render();
 </script>
