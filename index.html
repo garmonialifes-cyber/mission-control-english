@@ -236,7 +236,7 @@ const PRIZES0=[
 ];
 const blank=()=>({name:'DENIS',started:null,days:[],skills:Object.fromEntries(SKILLS.map(s=>[s.id,
   {status:'unknown',seen:0,first:0,planet:false}])),diag:null,log:[],
-  station:null,pin:null,mute:false,launched:false,coins:0,earned:0,prizes:PRIZES0.slice(),orders:[]});
+  station:null,pin:null,voice:null,mute:false,launched:false,coins:0,earned:0,prizes:PRIZES0.slice(),orders:[]});
 let S=load();
 function load(){try{const r=localStorage.getItem(KEY);if(r)return Object.assign(blank(),JSON.parse(r))}catch(e){}return blank()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
@@ -292,10 +292,19 @@ if(canSpeak()){
   const loadV=()=>{voices=speechSynthesis.getVoices()};
   loadV();speechSynthesis.onvoiceschanged=loadV;
 }
+// мужские английские голоса по системам: mac, windows, android/chrome
+const MALE=/\b(alex|daniel|aaron|fred|tom|rocko|reed|eddy|arthur|oliver|ryan|guy|david|mark|james|george|rishi|male)\b/i;
+const FEMALE=/\b(samantha|victoria|karen|moira|tessa|fiona|zoe|ava|allison|susan|female|zira|hazel)\b/i;
+function enList(){return voices.filter(v=>/^en([-_]|$)/i.test(v.lang))}
 function enVoice(){
-  return voices.find(v=>/^en-(US|GB)/.test(v.lang)&&/natural|premium|enhanced|samantha|daniel/i.test(v.name))
-      || voices.find(v=>/^en-US/.test(v.lang))
-      || voices.find(v=>/^en/.test(v.lang))||null;
+  const en=enList();
+  if(!en.length)return null;
+  if(S.voice){const pick=en.find(v=>v.name===S.voice);if(pick)return pick}
+  const better=v=>/(enhanced|premium|natural|neural)/i.test(v.name);
+  const male=en.filter(v=>MALE.test(v.name)&&!FEMALE.test(v.name));
+  const us=a=>a.filter(v=>/^en[-_]US/i.test(v.lang));
+  const rank=a=>a.find(better)||a[0];
+  return rank(us(male))||rank(male)||rank(us(en))||rank(en)||null;
 }
 function speak(text,done){
   if(!canSpeak()||S.mute){done&&done();return}
@@ -303,7 +312,7 @@ function speak(text,done){
     speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(text);
     const v=enVoice();if(v)u.voice=v;
-    u.lang=(v&&v.lang)||'en-US';u.rate=.88;u.pitch=1.02;
+    u.lang=(v&&v.lang)||'en-US';u.rate=.9;u.pitch=1;
     if(done)u.onend=done;
     speechSynthesis.speak(u);
   }catch(e){done&&done()}
@@ -800,6 +809,11 @@ function parentScreen(){
       <td class="n">${l.d.slice(8)}.${l.d.slice(5,7)}</td>
       <td>${skill(l.sid).icon} ${skill(l.sid).name}</td>
       <td class="n" style="text-align:right">${l.c} из ${l.n}</td></tr>`).join('')}</tbody></table>`:''}
+    <h2 style="margin-top:34px">Голос</h2>
+    <p style="font-size:15px;color:var(--ink-dim)">Каким голосом приложение читает задания.
+    Выберите тот, что приятнее слушать — послушать можно кнопкой.</p>
+    <div class="addrow" id="vrowp"></div>
+
     <h2 style="margin-top:34px">Грузовой отсек</h2>
     <p style="font-size:15px;color:var(--ink-dim)">Денис заработал <b class="mono" style="color:var(--amber)">${S.earned}</b> коинов,
     на счету сейчас <b class="mono" style="color:var(--amber)">${S.coins}</b>.
@@ -818,6 +832,22 @@ function parentScreen(){
       </div>`).join('')}</div>`:''}
     <p class="foot">Прогресс хранится в этом браузере. <button class="btn ghost" id="lk" style="padding:6px 12px;font-size:12px">Закрыть раздел</button>
     <button class="btn ghost" id="rs" style="padding:6px 12px;font-size:12px">Сбросить всё</button></p>`;
+  const vr=document.getElementById('vrowp');
+  if(!canSpeak()||!enList().length){
+    vr.innerHTML='<span style="color:var(--ink-faint);font-size:15px">Этот браузер не умеет читать вслух.</span>';
+  }else{
+    const sel=document.createElement('select');
+    sel.id='vsel';sel.style.cssText='font-family:var(--body);font-size:16px;background:#050912;color:var(--ink);border:1px solid var(--line);padding:10px 12px;flex:1;min-width:200px';
+    const cur=enVoice();
+    enList().forEach(v=>{const o=document.createElement('option');o.value=v.name;
+      o.textContent=v.name+' · '+v.lang+(MALE.test(v.name)&&!FEMALE.test(v.name)?' · мужской':FEMALE.test(v.name)?' · женский':'');
+      if(cur&&v.name===cur.name)o.selected=true;sel.appendChild(o)});
+    sel.onchange=()=>{S.voice=sel.value;save();speak('Hi! I am your mission control. Ready for the next task?')};
+    const test=document.createElement('button');test.className='btn ghost';test.textContent='Послушать';
+    test.onclick=()=>speak('Look! The rocket is taking off right now. Three, two, one!');
+    vr.appendChild(sel);vr.appendChild(test);
+    if(!S.voice&&cur)S.voice=cur.name;
+  }
   const pb=document.getElementById('ppz');
   pb.innerHTML=S.prizes.length?'':`<div class="pz"><span class="nm" style="color:var(--ink-faint)">Список пуст</span></div>`;
   S.prizes.forEach(p=>{const d=document.createElement('div');d.className='pz'+(p.demo?' demo':'');
