@@ -128,6 +128,45 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-d
 .stats .v{font-family:var(--disp);font-size:28px;font-weight:700;line-height:1;margin-bottom:5px}
 .stats .l{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
 .foot{margin-top:28px;font-size:13px;color:var(--ink-faint);font-family:var(--mono)}
+/* ── ракета ── */
+.rockwrap{display:grid;grid-template-columns:190px 1fr;gap:22px;align-items:center;
+  border:1px solid var(--line);background:var(--hull);padding:20px;margin-bottom:22px}
+.rockwrap svg{width:100%;height:auto;max-width:190px;display:block}
+.rockwrap .nfo h2{margin-bottom:6px}
+.rockwrap .nfo p{font-size:15px;color:var(--ink-dim);margin-bottom:10px}
+.parts{display:flex;flex-wrap:wrap;gap:5px}
+.parts span{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+  padding:3px 7px;background:#151d31;color:var(--ink-faint)}
+.parts span.on{background:var(--amber-soft);color:var(--amber)}
+.part{fill:#151F38;stroke:#22304F;stroke-width:2}
+.part.on{fill:#1E2B4A;stroke:var(--amber)}
+.port{fill:#0A1020;stroke:#22304F;stroke-width:2}
+.port.on{fill:var(--go);stroke:var(--go)}
+.flame{opacity:0}
+@media(max-width:560px){.rockwrap{grid-template-columns:1fr;justify-items:center;text-align:center}
+  .rockwrap svg{max-width:150px}.parts{justify-content:center}}
+.launch{border:1px solid var(--amber);background:linear-gradient(180deg,#2A1D08,var(--hull));
+  padding:28px;text-align:center}
+.count{font-family:var(--disp);font-size:clamp(60px,18vw,110px);font-weight:700;line-height:1;
+  color:var(--amber);font-variant-numeric:tabular-nums}
+@keyframes liftoff{0%{transform:translateY(0)}18%{transform:translateY(8px)}
+  100%{transform:translateY(-135vh) scale(.5)}}
+@keyframes burn{0%,100%{opacity:.55;transform:scaleY(.8)}50%{opacity:1;transform:scaleY(1.25)}}
+.flying svg{animation:liftoff 3.4s cubic-bezier(.5,0,.85,.4) forwards}
+.flying .flame{opacity:1;transform-origin:50% 0%;animation:burn .12s infinite}
+
+/* ── голос ── */
+.voice{background:none;border:1px solid var(--line);padding:7px 12px;font-family:var(--mono);
+  font-size:12px;color:var(--ink-dim);display:inline-flex;gap:7px;align-items:center;white-space:nowrap}
+.voice:hover{border-color:var(--amber);color:var(--ink)}
+.voice.rec{border-color:var(--fail);color:var(--fail)}
+.voice.rec::before{content:"";width:8px;height:8px;background:var(--fail);border-radius:50%;
+  animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.vrow{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.heard{font-family:var(--mono);font-size:13px;color:var(--ink-faint);min-height:17px;margin-bottom:10px}
+.heard b{color:var(--ink);font-weight:500}
+
 /* ── замок родительской вкладки ── */
 .lock{border:1px solid var(--line);background:var(--hull);padding:26px;max-width:430px}
 .lock h2{margin-bottom:8px}
@@ -197,7 +236,7 @@ const PRIZES0=[
 ];
 const blank=()=>({name:'DENIS',started:null,days:[],skills:Object.fromEntries(SKILLS.map(s=>[s.id,
   {status:'unknown',seen:0,first:0,planet:false}])),diag:null,log:[],
-  station:null,pin:null,coins:0,earned:0,prizes:PRIZES0.slice(),orders:[]});
+  station:null,pin:null,mute:false,launched:false,coins:0,earned:0,prizes:PRIZES0.slice(),orders:[]});
 let S=load();
 function load(){try{const r=localStorage.getItem(KEY);if(r)return Object.assign(blank(),JSON.parse(r))}catch(e){}return blank()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
@@ -227,14 +266,154 @@ function tele(){
     <span class="cell">КОИНЫ <i>${S.coins}</i></span>
     <span class="sp"></span>
     ${hasCfg()?`<span class="link ${SYNC.on?'on':'off'}">${SYNC.on?'◉ связь с Землёй':'○ нет связи'}</span>`:''}`;
+  if(canSpeak()){
+    const vb=document.createElement('button');vb.className='tab';vb.id='mute';
+    vb.textContent=S.mute?'🔇 звук выкл':'🔊 звук вкл';vb.title='Читать задания вслух';
+    vb.onclick=()=>{S.mute=!S.mute;if(S.mute)try{speechSynthesis.cancel()}catch(e){};save();tele()};
+    t.appendChild(vb);
+  }
   [['home','Станция'],['cargo','Грузовой отсек'],['parent','🔒 Для мамы']].forEach(([r,l])=>{
     const b=document.createElement('button');b.className='tab';b.textContent=l;
     b.setAttribute('aria-current',route===r);b.onclick=()=>go(r);t.appendChild(b)});
 }
-function go(r){route=r;render()}
-function render(){tele();({home:home,cargo:cargo,parent:parent_,diag:()=>{},mission:()=>{}})[route]?.();
+function go(r){stopRec();try{speechSynthesis.cancel()}catch(e){}route=r;render()}
+function render(){tele();({home:home,cargo:cargo,parent:parent_,diag:()=>{},mission:()=>{},launch:()=>{}})[route]?.();
   document.getElementById('foot').textContent=S.diag?`Диагностика пройдена ${S.diag}. Прогресс сохраняется в этом браузере.`:'';}
 
+
+
+
+/* ─────────── ГОЛОС ─────────── */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const canHear=()=>!!SR;
+const canSpeak=()=>'speechSynthesis'in window;
+let voices=[];
+if(canSpeak()){
+  const loadV=()=>{voices=speechSynthesis.getVoices()};
+  loadV();speechSynthesis.onvoiceschanged=loadV;
+}
+function enVoice(){
+  return voices.find(v=>/^en-(US|GB)/.test(v.lang)&&/natural|premium|enhanced|samantha|daniel/i.test(v.name))
+      || voices.find(v=>/^en-US/.test(v.lang))
+      || voices.find(v=>/^en/.test(v.lang))||null;
+}
+function speak(text,done){
+  if(!canSpeak()||S.mute){done&&done();return}
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    const v=enVoice();if(v)u.voice=v;
+    u.lang=(v&&v.lang)||'en-US';u.rate=.88;u.pitch=1.02;
+    if(done)u.onend=done;
+    speechSynthesis.speak(u);
+  }catch(e){done&&done()}
+}
+// английская часть задания, пропуск читается как "blank"
+const sayable=t=>t.split('\n\n')[0].replace(/_{2,}/g,' blank ').replace(/\s+/g,' ').trim();
+
+let REC=null;
+function listen(onText,onEnd){
+  if(!canHear()){onEnd&&onEnd();return null}
+  try{
+    const r=new SR();
+    r.lang='en-US';r.interimResults=true;r.maxAlternatives=3;r.continuous=false;
+    let best='';
+    r.onresult=e=>{
+      best=Array.from(e.results).map(x=>x[0].transcript).join(' ');
+      onText(best,e.results[e.results.length-1].isFinal);
+    };
+    r.onerror=()=>{onEnd&&onEnd(best)};
+    r.onend=()=>{onEnd&&onEnd(best)};
+    r.start();return r;
+  }catch(e){onEnd&&onEnd('');return null}
+}
+function stopRec(){try{REC&&REC.stop()}catch(e){}REC=null}
+// какой вариант ближе к услышанному
+function matchOption(heard,opts){
+  const h=' '+norm(heard).replace(/[^a-z0-9 ]/g,'')+' ';
+  let best=null,score=0;
+  opts.forEach(o=>{
+    const n=norm(o).replace(/[^a-z0-9 ]/g,'');
+    if(!n)return;
+    let sc=0;
+    if(h.includes(' '+n+' '))sc=100+n.length;
+    else{const w=n.split(' ').filter(x=>x.length>1);
+      sc=w.filter(x=>h.includes(' '+x+' ')).length*10}
+    if(sc>score){score=sc;best=o}
+  });
+  return score>=10?best:null;
+}
+
+/* ─────────── РАКЕТА ─────────── */
+const PARTS={s3:'Обтекатель',past:'Капсула',cont:'Приборный отсек',prep:'Иллюминатор',
+  plur:'Переходник',comp:'Верхний бак',art:'Нижний бак',read:'Стабилизаторы',voc:'Двигатели'};
+const built=id=>S.skills[id].status==='green';
+const readyToFly=()=>SKILLS.every(s=>built(s.id));
+
+function rocketSVG(){
+  const on=id=>built(id)?' on':'';
+  return `<svg viewBox="0 0 160 400" role="img" aria-label="Ракета: ${SKILLS.filter(s=>built(s.id)).length} из 9 деталей">
+    <g class="flame"><path d="M68 352 L80 400 L92 352 Z" fill="#FFB454"/>
+      <path d="M74 352 L80 382 L86 352 Z" fill="#FFF0D0"/></g>
+    <polygon class="part${on('voc')}" points="60,330 100,330 96,356 64,356"/>
+    <rect class="part${on('art')}" x="54" y="244" width="52" height="88"/>
+    <polygon class="part${on('read')}" points="54,290 30,346 54,332"/>
+    <polygon class="part${on('read')}" points="106,290 130,346 106,332"/>
+    <rect class="part${on('comp')}" x="54" y="168" width="52" height="78"/>
+    <rect class="part${on('plur')}" x="58" y="148" width="44" height="22"/>
+    <rect class="part${on('cont')}" x="54" y="104" width="52" height="46"/>
+    <circle class="port${on('prep')}" cx="80" cy="127" r="11"/>
+    <polygon class="part${on('past')}" points="80,52 106,104 54,104"/>
+    <polygon class="part${on('s3')}" points="80,20 90,54 70,54"/>
+  </svg>`;
+}
+function rocketBlock(){
+  const n=SKILLS.filter(s=>built(s.id)).length;
+  return `<div class="rockwrap" id="rock">
+    ${rocketSVG()}
+    <div class="nfo">
+      <h2>${n===9?'Ракета собрана':'Ракета собирается'}</h2>
+      <p>${n===9
+        ? 'Все девять деталей на месте. Можно запускать — стартовый стол свободен.'
+        : `Деталей на месте: ${n} из 9. Каждый исправный отсек станции добавляет одну деталь.`}</p>
+      <div class="parts">${SKILLS.map(s=>
+        `<span class="${built(s.id)?'on':''}">${PARTS[s.id]}</span>`).join('')}</div>
+      ${n===9&&!S.launched?'<p style="margin:14px 0 0"><button class="btn" id="fly">Пуск</button></p>':''}
+      ${S.launched?'<p style="margin:12px 0 0;color:var(--go);font-family:var(--mono);font-size:13px">◉ ракета в полёте — можно собрать ещё одну, если отсек снова просядет</p>':''}
+    </div></div>`;
+}
+function launchSeq(){
+  route='launch';
+  V.innerHTML=`<div class="launch">
+    <div class="eyebrow">Стартовый стол</div>
+    <div class="count" id="cnt">3</div>
+    <div class="mono" id="cap" style="color:var(--ink-dim)">до старта</div>
+    <div id="rk" style="max-width:190px;margin:18px auto 0">${rocketSVG()}</div>
+  </div>`;
+  const cnt=document.getElementById('cnt'),cap=document.getElementById('cap');
+  let n=3;
+  const tick=setInterval(()=>{
+    n--;
+    if(n>0){cnt.textContent=n;speak(String(n));return}
+    clearInterval(tick);
+    cnt.textContent='GO';cap.textContent='поехали';
+    speak('Three, two, one, liftoff!');
+    document.getElementById('rk').classList.add('flying');
+    S.launched=true;save();
+    setTimeout(()=>{
+      V.innerHTML=`<div class="eyebrow">Полёт</div>
+        <h1>Ракета ушла</h1>
+        <p class="lead">Девять отсеков исправны, ракета на орбите. Ты собрал её сам — каждой деталью
+        стала починенная система языка.</p>
+        <div class="planet"><div class="eyebrow">Куда летим дальше</div>
+          <div class="nm">Deep Space</div>
+          <div class="fact">${PLANETS.voc.f}</div></div>
+        <p style="margin-top:20px"><button class="btn" id="ok">На станцию</button></p>`;
+      document.getElementById('ok').onclick=()=>go('home');
+    },3600);
+  },1000);
+  speak('Three');
+}
 
 /* ─────────── СВЯЗЬ С ЗЕМЛЁЙ (синхронизация) ─────────── */
 const SYNC={on:false,busy:false,dirty:false,last:0};
@@ -334,8 +513,10 @@ function home(){
       ? 'Сегодняшняя миссия — отсек «'+skill(target).name+'». Шесть заданий, минут пятнадцать.'
       : 'Денис, станция полностью твоя. Можно зайти в любой отсек и потренироваться просто так.'}</p>
     <p><button class="btn" id="go">${broken.length?'Миссия дня — '+skill(target).name:'Свободная тренировка'}</button></p>
+    ${rocketBlock()}
     <div class="grid" id="grid"></div>`;
   document.getElementById('go').onclick=()=>startMission(target);
+  document.getElementById('fly')?.addEventListener('click',launchSeq);
   const g=document.getElementById('grid');
   SKILLS.forEach(s=>{const st=S.skills[s.id];
     const b=document.createElement('button');b.className='bay '+st.status;
@@ -422,12 +603,38 @@ function runSet(items,opt,done){
           <div class="pips" id="pips"></div>
         </div>
         <div class="q${isText?' txt':''}">${q.q.replace(/</g,'&lt;')}</div>
+        <div class="vrow">
+          ${canSpeak()?'<button class="voice" id="say">🔊 Прочитать вслух</button>':''}
+          ${canHear()?'<button class="voice" id="mic">🎤 Ответить голосом</button>':''}
+        </div>
+        <div class="heard" id="heard"></div>
         <div class="opts" id="opts"></div>
         <div id="db"></div>
       </div>`;
     const pips=document.getElementById('pips');
     items.forEach((_,k)=>{const el=document.createElement('i');
       el.className=k<i?(res[k].ok?'done':'miss'):k===i?'now':'';pips.appendChild(el)});
+    const heard=document.getElementById('heard');
+    document.getElementById('say')?.addEventListener('click',()=>speak(sayable(q.q)));
+    if(!S.mute&&!isText)setTimeout(()=>speak(sayable(q.q)),380);
+    const mic=document.getElementById('mic');
+    if(mic)mic.onclick=()=>{
+      if(REC){stopRec();mic.classList.remove('rec');mic.textContent='🎤 Ответить голосом';return}
+      try{speechSynthesis.cancel()}catch(e){}
+      mic.classList.add('rec');mic.textContent='Говори…';
+      heard.innerHTML='<span style="color:var(--ink-faint)">слушаю</span>';
+      REC=listen(
+        (t)=>{heard.innerHTML='слышу: <b>'+t.replace(/</g,'&lt;')+'</b>'},
+        (t)=>{
+          REC=null;mic.classList.remove('rec');mic.textContent='🎤 Ответить голосом';
+          if(!t){heard.innerHTML='<span style="color:var(--ink-faint)">не расслышала — попробуй ещё раз или нажми вариант</span>';return}
+          const hit=matchOption(t,opts);
+          if(hit){heard.innerHTML='слышу: <b>'+t.replace(/</g,'&lt;')+'</b>';
+            const btn=[...box.children].find(b=>b.dataset.v===hit);
+            if(btn&&!btn.disabled)btn.click()}
+          else heard.innerHTML='слышу: <b>'+t.replace(/</g,'&lt;')+'</b> — такого варианта нет, скажи ещё раз';
+        });
+    };
     const box=document.getElementById('opts');
     opts.forEach((o,k)=>{const b=document.createElement('button');b.className='opt';
       b.innerHTML=`<span class="k">${'ABCD'[k]}</span><span>${o.replace(/</g,'&lt;')}</span>`;
@@ -439,7 +646,9 @@ function runSet(items,opt,done){
       btn.classList.add(ok?'right':'wrong');
       if(!ok)[...box.children].find(b=>b.dataset.v===correct)?.classList.add('right');
       res[i]={sid,ok};
-      if(ok){btn.classList.add('flash');setTimeout(()=>{i++;step()},560);return}
+      if(ok){btn.classList.add('flash');
+        if(!S.mute&&!isText)speak(sayable(q.q).replace(/ blank /i,' '+correct+' '));
+        setTimeout(()=>{i++;step()},760);return}
       debrief();
     }
     function debrief(){
@@ -448,12 +657,15 @@ function runSet(items,opt,done){
       d.innerHTML=`
         <div class="row"><div class="lb">Что не так</div><div class="tx">${q.why}</div></div>
         <div class="row"><div class="lb">Правило</div><div class="tx">${q.rule}</div></div>
-        <div class="row"><div class="lb">Как это звучит</div><div class="ex">${q.ex.replace(/</g,'&lt;')}</div></div>
+        <div class="row"><div class="lb">Как это звучит</div><div class="ex">${q.ex.replace(/</g,'&lt;')}</div>
+          ${canSpeak()?'<div><button class="voice" id="sayex" style="margin-top:6px">🔊 Послушать пример</button></div>':''}</div>
         <div class="row"><div class="lb">Проверим сразу</div><div class="tx">${q.up.q.replace(/</g,'&lt;')}</div>
           <div class="check"><input id="in" autocomplete="off" spellcheck="false" placeholder="напиши ответ">
           <button class="btn" id="ck">Ответить</button></div>
           <div class="verdict" id="vd"></div></div>`;
       const inp=document.getElementById('in'),vd=document.getElementById('vd');
+      document.getElementById('sayex')?.addEventListener('click',()=>speak(q.ex));
+      if(!S.mute)setTimeout(()=>speak(q.ex),300);
       let tries=0;inp.focus();
       const check=()=>{
         if(norm(inp.value)===norm(q.up.a)){
