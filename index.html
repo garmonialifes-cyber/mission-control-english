@@ -39,9 +39,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 .tele .link{font-family:var(--mono);font-size:11px;letter-spacing:.08em;padding:2px 7px;white-space:nowrap}
 .tele .link.on{color:var(--go);background:var(--go-soft)}
 .tele .link.off{color:var(--ink-faint);background:#151d31}
-.tele .tab{background:none;border:1px solid transparent;padding:3px 9px;font-family:var(--mono);
-  font-size:12px;color:var(--ink-faint)}
-.tele .tab[aria-current="true"]{border-color:var(--line);background:#0b1020;color:var(--ink)}
+.tele .tab{background:#111A2E;border:1px solid var(--line);padding:4px 10px;font-family:var(--mono);
+  font-size:12px;color:var(--ink-dim)}
+.tele .tab:hover{border-color:var(--amber);color:var(--ink)}
+.tele .tab[aria-current="true"]{border-color:var(--amber);background:var(--amber-soft);color:var(--amber)}
 
 h1{font-family:var(--disp);font-weight:700;font-size:clamp(28px,6vw,42px);line-height:1.08;
   letter-spacing:-.01em;margin:0 0 10px;text-wrap:balance}
@@ -850,9 +851,11 @@ function lockScreen(){
       <div class="pinrow">
         <input id="pin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="····">
         <button class="btn" id="pgo">${first?'Поставить':'Открыть'}</button>
+        <button class="btn ghost" id="pback">← На станцию</button>
       </div>
       <div class="err" id="perr"></div>
     </div>`;
+  document.getElementById('pback').onclick=()=>go('home');
   const inp=document.getElementById('pin'),err=document.getElementById('perr');
   inp.focus();
   const act=()=>{
@@ -870,7 +873,8 @@ function parentScreen(){
   const tot=SKILLS.reduce((a,s)=>a+S.skills[s.id].seen,0);
   const fir=SKILLS.reduce((a,s)=>a+S.skills[s.id].first,0);
   const week=S.log.filter(l=>l.d>=new Date(Date.now()-6*864e5).toISOString().slice(0,10));
-  V.innerHTML=`<div class="eyebrow">Сводка по навыкам</div>
+  V.innerHTML=`<p style="margin-bottom:16px"><button class="btn ghost" id="pback2">← На станцию</button></p>
+    <div class="eyebrow">Сводка по навыкам</div>
     <h1>Что у Дениса с английским</h1>
     <p class="lead">Не баллы, а состояние девяти систем языка по американской программе Grade 3–4.
     Красное — то, что нужно чинить; жёлтое — знает, но плавает.</p>
@@ -917,6 +921,7 @@ function parentScreen(){
       </div>`).join('')}</div>`:''}
     <p class="foot">Прогресс хранится в этом браузере. <button class="btn ghost" id="lk" style="padding:6px 12px;font-size:12px">Закрыть раздел</button>
     <button class="btn ghost" id="rs" style="padding:6px 12px;font-size:12px">Сбросить всё</button></p>`;
+  document.getElementById('pback2').onclick=()=>go('home');
   const vr=document.getElementById('vrowp');
   if(!canSpeak()||!enList().length){
     vr.innerHTML='<span style="color:var(--ink-faint);font-size:15px">Этот браузер не умеет читать вслух.</span>';
