@@ -280,6 +280,20 @@ function tele(){
     vb.textContent=S.mute?'🔇 звук выкл':'🔊 звук вкл';vb.title='Читать задания вслух';
     vb.onclick=()=>{S.mute=!S.mute;if(S.mute)try{speechSynthesis.cancel()}catch(e){};save();tele()};
     t.appendChild(vb);
+    if(!S.mute){
+      const cur=enVoice();
+      const nb=document.createElement('button');nb.className='tab';nb.id='nxtv';
+      nb.textContent='🗣 '+(cur?cur.name.replace(/\s*\(.*\)/,''):'голос');
+      nb.title='Другой голос — нажимайте, пока не понравится';
+      nb.onclick=()=>{
+        const en=enList();if(!en.length)return;
+        const i=cur?en.findIndex(v=>v.name===cur.name):-1;
+        const next=en[(i+1)%en.length];
+        S.voice=next.name;save();tele();
+        speak('Hello! Look, the rocket is taking off right now.');
+      };
+      t.appendChild(nb);
+    }
   }
   [['home','Станция'],['cargo','Грузовой отсек'],['parent','🔒 Для мамы']].forEach(([r,l])=>{
     const b=document.createElement('button');b.className='tab';b.textContent=l;
@@ -346,6 +360,8 @@ function enList(){return voices.filter(v=>/^en([-_]|$)/i.test(v.lang))}
 function enVoice(){
   const en=enList();
   if(!en.length)return null;
+  // раньше мог сохраниться женский голос — он больше не в приоритете
+  if(S.voice&&FEMALE.test(S.voice)){S.voice=null;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
   if(S.voice){const pick=en.find(v=>v.name===S.voice);if(pick)return pick}
   const male=en.filter(v=>MALE.test(v.name)&&!FEMALE.test(v.name));
   // сначала по имени из списка предпочтений, улучшенные версии выше
@@ -913,7 +929,6 @@ function parentScreen(){
     const test=document.createElement('button');test.className='btn ghost';test.textContent='Послушать';
     test.onclick=()=>speak('Look! The rocket is taking off right now. Three, two, one!');
     vr.appendChild(sel);vr.appendChild(test);
-    if(!S.voice&&cur)S.voice=cur.name;
   }
   const pb=document.getElementById('ppz');
   pb.innerHTML=S.prizes.length?'':`<div class="pz"><span class="nm" style="color:var(--ink-faint)">Список пуст</span></div>`;
