@@ -471,13 +471,16 @@ function launchSeq(){
     <div class="count" id="cnt">3</div>
     <div class="mono" id="cap" style="color:var(--ink-dim)">до старта</div>
     <div id="rk" style="max-width:190px;margin:18px auto 0">${rocketSVG()}</div>
+    <p style="margin:18px 0 0"><button class="btn ghost" id="abort">Отменить пуск</button></p>
   </div>`;
   const cnt=document.getElementById('cnt'),cap=document.getElementById('cap');
   let n=3;
-  const tick=setInterval(()=>{
+  document.getElementById('abort').onclick=()=>{clearInterval(tick);try{speechSynthesis.cancel()}catch(e){}go('home')};
+  var tick=setInterval(()=>{
     n--;
     if(n>0){cnt.textContent=n;speak(String(n));return}
     clearInterval(tick);
+    document.getElementById('abort')?.remove();
     cnt.textContent='GO';cap.textContent='поехали';
     speak('Three, two, one, liftoff!');
     document.getElementById('rk').classList.add('flying');
@@ -693,7 +696,10 @@ function runSet(items,opt,done){
         <div class="qhead">
           <div><div class="eyebrow">${opt.title}</div>
           <div class="mono" style="font-size:12px;color:var(--ink-faint)">${skill(sid).full}</div></div>
-          <div class="pips" id="pips"></div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div class="pips" id="pips"></div>
+            <button class="voice" id="quit">← Выйти</button>
+          </div>
         </div>
         <div class="q${isText?' txt':''}">${q.q.replace(/</g,'&lt;')}</div>
         <div class="vrow">
@@ -704,6 +710,13 @@ function runSet(items,opt,done){
         <div class="opts" id="opts"></div>
         <div id="db"></div>
       </div>`;
+    document.getElementById('quit').onclick=()=>{
+      const left=items.length-i;
+      const msg=opt.mode==='diag'
+        ? 'Выйти из проверки систем? Ответы не сохранятся, проверку придётся начать заново.'
+        : `Выйти из миссии? Осталось заданий: ${left}. Результат этой миссии не засчитается.`;
+      if(confirm(msg))go('home');
+    };
     const pips=document.getElementById('pips');
     items.forEach((_,k)=>{const el=document.createElement('i');
       el.className=k<i?(res[k].ok?'done':'miss'):k===i?'now':'';pips.appendChild(el)});
