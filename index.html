@@ -128,6 +128,15 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-d
 .stats .v{font-family:var(--disp);font-size:28px;font-weight:700;line-height:1;margin-bottom:5px}
 .stats .l{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
 .foot{margin-top:28px;font-size:13px;color:var(--ink-faint);font-family:var(--mono)}
+/* ── демо-режим ── */
+.demo-bar{border:1px solid var(--warn);background:#2A2109;padding:11px 14px;margin-bottom:20px;
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--warn)}
+.demo-bar span{flex:1;min-width:180px}
+.demo-bar .voice{border-color:#4a3a12;color:var(--warn)}
+.demo-bar .voice:hover{border-color:var(--warn)}
+.hint{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--go);background:var(--go-soft);padding:3px 7px;flex:none}
+
 /* ── ракета ── */
 .rockwrap{display:grid;grid-template-columns:190px 1fr;gap:22px;align-items:center;
   border:1px solid var(--line);background:var(--hull);padding:20px;margin-bottom:22px}
@@ -236,7 +245,7 @@ const PRIZES0=[
 ];
 const blank=()=>({name:'DENIS',started:null,days:[],skills:Object.fromEntries(SKILLS.map(s=>[s.id,
   {status:'unknown',seen:0,first:0,planet:false}])),diag:null,log:[],
-  station:null,pin:null,voice:null,mute:false,launched:false,coins:0,earned:0,prizes:PRIZES0.slice(),orders:[]});
+  station:null,pin:null,voice:null,mute:false,demo:false,launched:false,coins:0,earned:0,prizes:PRIZES0.slice(),orders:[]});
 let S=load();
 function load(){try{const r=localStorage.getItem(KEY);if(r)return Object.assign(blank(),JSON.parse(r))}catch(e){}return blank()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
@@ -283,30 +292,75 @@ function render(){tele();({home:home,cargo:cargo,parent:parent_,diag:()=>{},miss
 
 
 
+
+/* ─────────── ДЕМО-РЕЖИМ (посмотреть, как всё устроено) ─────────── */
+function fillDemo(full){
+  S.demo=true;
+  const order=SKILLS.map(s=>s.id);
+  order.forEach((id,i)=>{
+    const st=S.skills[id];
+    const green=full||i<5;
+    st.status=green?'green':(i<7?'amber':'red');
+    st.seen=full?24:(green?18:8);
+    st.first=green?Math.round(st.seen*0.85):Math.round(st.seen*0.45);
+    st.planet=green;
+  });
+  S.diag=new Date().toLocaleDateString('ru-RU');
+  S.coins=full?1240:430;S.earned=full?2890:610;
+  S.days=[today()];
+  S.log=[{d:today(),sid:'past',c:5,n:6},{d:today(),sid:'prep',c:4,n:6}];
+  if(!S.orders.length&&full)S.orders=[{id:1,n:'Мороженое на выбор',g:250,d:new Date().toLocaleDateString('ru-RU'),done:false}];
+  S.launched=false;
+  save();
+}
+function clearDemo(){
+  const keep={pin:S.pin,station:S.station,voice:S.voice,mute:S.mute};
+  S=Object.assign(blank(),keep);save();
+}
+
 /* ─────────── ГОЛОС ─────────── */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const canHear=()=>!!SR;
 const canSpeak=()=>'speechSynthesis'in window;
 let voices=[];
+let voicesReady=Promise.resolve();
 if(canSpeak()){
-  const loadV=()=>{voices=speechSynthesis.getVoices()};
-  loadV();speechSynthesis.onvoiceschanged=loadV;
+  const loadV=()=>{voices=speechSynthesis.getVoices()||[]};
+  loadV();
+  // список голосов приезжает не сразу — без ожидания браузер берёт голос по умолчанию
+  if(!voices.length){
+    voicesReady=new Promise(res=>{
+      let done=false;
+      const fin=()=>{if(done)return;done=true;loadV();res()};
+      speechSynthesis.onvoiceschanged=fin;
+      const t=setInterval(()=>{loadV();if(voices.length){clearInterval(t);fin()}},120);
+      setTimeout(()=>{clearInterval(t);fin()},2500);
+    });
+  }else speechSynthesis.onvoiceschanged=loadV;
 }
 // мужские английские голоса по системам: mac, windows, android/chrome
-const MALE=/\b(alex|daniel|aaron|fred|tom|rocko|reed|eddy|arthur|oliver|ryan|guy|david|mark|james|george|rishi|male)\b/i;
+const PREFER=['alex','eddy','daniel','tom','aaron','reed','rocko','arthur','oliver','ryan','guy','david','mark','albert','ralph','fred'];
+const MALE=/\b(alex|daniel|aaron|fred|tom|rocko|reed|eddy|arthur|oliver|ryan|guy|david|mark|james|george|rishi|albert|ralph|junior|grandpa|bruce|male)\b/i;
 const FEMALE=/\b(samantha|victoria|karen|moira|tessa|fiona|zoe|ava|allison|susan|female|zira|hazel)\b/i;
 function enList(){return voices.filter(v=>/^en([-_]|$)/i.test(v.lang))}
 function enVoice(){
   const en=enList();
   if(!en.length)return null;
   if(S.voice){const pick=en.find(v=>v.name===S.voice);if(pick)return pick}
-  const better=v=>/(enhanced|premium|natural|neural)/i.test(v.name);
   const male=en.filter(v=>MALE.test(v.name)&&!FEMALE.test(v.name));
-  const us=a=>a.filter(v=>/^en[-_]US/i.test(v.lang));
-  const rank=a=>a.find(better)||a[0];
-  return rank(us(male))||rank(male)||rank(us(en))||rank(en)||null;
+  // сначала по имени из списка предпочтений, улучшенные версии выше
+  for(const want of PREFER){
+    const hit=male.filter(v=>new RegExp('\\b'+want+'\\b','i').test(v.name));
+    if(hit.length)return hit.find(v=>/(enhanced|premium|natural|neural)/i.test(v.name))||hit[0];
+  }
+  return male[0]||en.find(v=>/^en[-_]US/i.test(v.lang))||en[0]||null;
 }
 function speak(text,done){
+  if(!canSpeak()||S.mute){done&&done();return}
+  if(!voices.length){voicesReady.then(()=>realSpeak(text,done));return}
+  realSpeak(text,done);
+}
+function realSpeak(text,done){
   if(!canSpeak()||S.mute){done&&done();return}
   try{
     speechSynthesis.cancel();
@@ -511,12 +565,21 @@ function home(){
       Пока непонятно, какие из них целы. Первый полёт — это проверка: 18 вопросов, минут двадцать.
       Ошибаться можно и нужно — так приборы и находят поломку.</p>
       <p style="color:var(--ink-faint);font-size:15px">Ничего не нужно учить заранее. Просто отвечай как думаешь.</p>
-      <button class="btn" id="go">Начать проверку систем</button>`;
-    document.getElementById('go').onclick=startDiag;return;
+      <p><button class="btn" id="go">Начать проверку систем</button></p>
+      <p style="margin-top:26px;font-size:14px;color:var(--ink-faint)">
+        Взрослому: <button class="voice" id="demo">Посмотреть, как всё устроено</button><br>
+        <span style="font-size:13px">Заполнит станцию придуманными результатами — чтобы увидеть
+        карту, ракету и грузовой отсек, не проходя задания. Потом всё стирается одной кнопкой.</span></p>`;
+    document.getElementById('go').onclick=startDiag;
+    document.getElementById('demo').onclick=()=>{fillDemo(false);go('home')};return;
   }
   const broken=SKILLS.filter(s=>S.skills[s.id].status!=='green');
   const target=pickTarget();
-  V.innerHTML=`<div class="eyebrow">Карта станции</div>
+  V.innerHTML=`${S.demo?`<div class="demo-bar">
+      <span>Показ: результаты придуманы, чтобы посмотреть, как всё выглядит</span>
+      <button class="voice" id="dfull">Собрать ракету целиком</button>
+      <button class="voice" id="dclr">Стереть показ</button></div>`:''}
+    <div class="eyebrow">Карта станции</div>
     <h1>${broken.length?'Отсеков под ремонтом: '+broken.length:'Все системы исправны'}</h1>
     <p class="lead">${broken.length
       ? 'Сегодняшняя миссия — отсек «'+skill(target).name+'». Шесть заданий, минут пятнадцать.'
@@ -526,6 +589,8 @@ function home(){
     <div class="grid" id="grid"></div>`;
   document.getElementById('go').onclick=()=>startMission(target);
   document.getElementById('fly')?.addEventListener('click',launchSeq);
+  document.getElementById('dfull')?.addEventListener('click',()=>{fillDemo(true);render()});
+  document.getElementById('dclr')?.addEventListener('click',()=>{clearDemo();go('home')});
   const g=document.getElementById('grid');
   SKILLS.forEach(s=>{const st=S.skills[s.id];
     const b=document.createElement('button');b.className='bay '+st.status;
@@ -646,7 +711,8 @@ function runSet(items,opt,done){
     };
     const box=document.getElementById('opts');
     opts.forEach((o,k)=>{const b=document.createElement('button');b.className='opt';
-      b.innerHTML=`<span class="k">${'ABCD'[k]}</span><span>${o.replace(/</g,'&lt;')}</span>`;
+      b.innerHTML=`<span class="k">${'ABCD'[k]}</span><span>${o.replace(/</g,'&lt;')}</span>`+
+        (S.demo&&o===correct?'<span class="hint" title="правильный ответ — видно только в показе">верный</span>':'');
       b.dataset.v=o;b.onclick=()=>answer(b,o);box.appendChild(b)});
 
     function answer(btn,chosen){
@@ -811,7 +877,8 @@ function parentScreen(){
       <td class="n" style="text-align:right">${l.c} из ${l.n}</td></tr>`).join('')}</tbody></table>`:''}
     <h2 style="margin-top:34px">Голос</h2>
     <p style="font-size:15px;color:var(--ink-dim)">Каким голосом приложение читает задания.
-    Выберите тот, что приятнее слушать — послушать можно кнопкой.</p>
+    Сейчас говорит <b class="mono" style="color:var(--amber)">${(enVoice()||{}).name||'голос по умолчанию'}</b>.
+    Выберите другой и послушайте кнопкой.</p>
     <div class="addrow" id="vrowp"></div>
 
     <h2 style="margin-top:34px">Грузовой отсек</h2>
