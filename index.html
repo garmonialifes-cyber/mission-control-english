@@ -131,6 +131,11 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-d
 .stats .v{font-family:var(--disp);font-size:28px;font-weight:700;line-height:1;margin-bottom:5px}
 .stats .l{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
 .foot{margin-top:28px;font-size:13px;color:var(--ink-faint);font-family:var(--mono)}
+/* ── предметы ── */
+.subhead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin:26px 0 9px}
+.subhead .ttl{font-family:var(--disp);font-weight:700;font-size:21px;letter-spacing:.01em}
+.subhead .src{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-left:auto}
+
 /* ── демо-режим ── */
 .demo-bar{border:1px solid var(--warn);background:#2A2109;padding:11px 14px;margin-bottom:20px;
   display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--warn)}
@@ -238,6 +243,7 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-d
 
 <script src="config.js"></script>
 <script src="bank.js"></script>
+<script src="bank_subjects.js"></script>
 <script>
 const KEY='mce_denis_v1';
 const PRIZES0=[
@@ -248,7 +254,7 @@ const PRIZES0=[
 ];
 const blank=()=>({name:'DENIS',started:null,days:[],skills:Object.fromEntries(SKILLS.map(s=>[s.id,
   {status:'unknown',seen:0,first:0,planet:false}])),diag:null,log:[],
-  station:null,pin:null,voice:null,mute:false,demo:false,launched:false,coins:0,earned:0,prizes:PRIZES0.slice(),orders:[]});
+  station:null,pin:null,voice:null,ruvoice:null,seenQ:{},mute:false,demo:false,launched:false,coins:0,earned:0,prizes:PRIZES0.slice(),orders:[]});
 let S=load();
 function load(){try{const r=localStorage.getItem(KEY);if(r)return Object.assign(blank(),JSON.parse(r))}catch(e){}return blank()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
@@ -270,10 +276,10 @@ let route='home';
 /* ─────────── ТЕЛЕМЕТРИЯ ─────────── */
 function tele(){
   const t=document.getElementById('tele');
-  const ok=SKILLS.filter(s=>S.skills[s.id].status==='green').length;
+  const ok=SKILLS.filter(s=>S.skills[s.id]&&S.skills[s.id].status==='green').length;
   t.innerHTML=`<span class="sig"></span><b>MISSION CONTROL</b>
     <span class="cell">СТАЖЁР <i>${S.name}</i></span>
-    <span class="cell">ОТСЕКИ <i>${ok}/9</i></span>
+    <span class="cell">ОТСЕКИ <i>${ok}/${SKILLS.length}</i></span>
     <span class="cell">ДНЕЙ ПОДРЯД <i>${streak()}</i></span>
     <span class="cell">КОИНЫ <i>${S.coins}</i></span>
     <span class="sp"></span>
@@ -315,8 +321,8 @@ function fillDemo(full){
   S.demo=true;
   const order=SKILLS.map(s=>s.id);
   order.forEach((id,i)=>{
-    const st=S.skills[id];
-    const green=full||i<5;
+    const st=S.skills[id];if(!st)return;
+    const green=full||i<Math.ceil(order.length*0.55);
     st.status=green?'green':(i<7?'amber':'red');
     st.seen=full?24:(green?18:8);
     st.first=green?Math.round(st.seen*0.85):Math.round(st.seen*0.45);
@@ -360,6 +366,33 @@ const PREFER=['alex','eddy','daniel','tom','aaron','reed','rocko','arthur','oliv
 const MALE=/\b(alex|daniel|aaron|fred|tom|rocko|reed|eddy|arthur|oliver|ryan|guy|david|mark|james|george|rishi|albert|ralph|junior|grandpa|bruce|male)\b/i;
 const FEMALE=/\b(samantha|victoria|karen|moira|tessa|fiona|zoe|ava|allison|susan|female|zira|hazel)\b/i;
 function enList(){return voices.filter(v=>/^en([-_]|$)/i.test(v.lang))}
+const RU_MALE=/\b(yuri|юрий|artem|pavel)\b/i;
+function ruVoice(){
+  const ru=voices.filter(v=>/^ru/i.test(v.lang));
+  if(!ru.length)return null;
+  if(S.ruvoice){const p=ru.find(v=>v.name===S.ruvoice);if(p)return p}
+  return ru.find(v=>RU_MALE.test(v.name)&&/(enhanced|premium)/i.test(v.name))
+      || ru.find(v=>RU_MALE.test(v.name))
+      || ru.find(v=>/(enhanced|premium)/i.test(v.name)) || ru[0];
+}
+// читает по-русски; если русского голоса нет — молчит, текст остаётся на экране
+function speakRu(text,done){
+  if(!canSpeak()||S.mute){done&&done();return}
+  if(!voices.length){voicesReady.then(()=>speakRu(text,done));return}
+  const v=ruVoice();
+  if(!v){done&&done();return}
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.voice=v;u.lang=v.lang;u.rate=.98;u.pitch=1;
+    if(done)u.onend=done;
+    speechSynthesis.speak(u);
+  }catch(e){done&&done()}
+}
+// объяснение целиком: разбор и правило по-русски, пример по-английски
+function speakExplain(q){
+  speakRu(q.why+' '+q.rule,()=>speak(q.ex.replace(/\n/g,'. ')));
+}
 function enVoice(){
   const en=enList();
   if(!en.length)return null;
@@ -429,12 +462,18 @@ function matchOption(heard,opts){
 /* ─────────── РАКЕТА ─────────── */
 const PARTS={s3:'Обтекатель',past:'Капсула',cont:'Приборный отсек',prep:'Иллюминатор',
   plur:'Переходник',comp:'Верхний бак',art:'Нижний бак',read:'Стабилизаторы',voc:'Двигатели'};
-const built=id=>S.skills[id].status==='green';
-const readyToFly=()=>SKILLS.every(s=>built(s.id));
+const greenCount=()=>SKILLS.filter(s=>S.skills[s.id]&&S.skills[s.id].status==='green').length;
+// деталь встаёт на место, когда закрыта очередная девятая часть всех систем
+const built=id=>{
+  const i=Object.keys(PARTS).indexOf(id);
+  if(i<0)return false;
+  return greenCount()>=Math.ceil((i+1)*SKILLS.length/9);
+};
+const readyToFly=()=>SKILLS.every(s=>S.skills[s.id]&&S.skills[s.id].status==='green');
 
 function rocketSVG(){
   const on=id=>built(id)?' on':'';
-  return `<svg viewBox="0 0 160 400" role="img" aria-label="Ракета: ${SKILLS.filter(s=>built(s.id)).length} из 9 деталей">
+  return `<svg viewBox="0 0 160 400" role="img" aria-label="Ракета: ${Object.keys(PARTS).filter(id=>built(id)).length} из 9 деталей">
     <g class="flame"><path d="M68 352 L80 400 L92 352 Z" fill="#FFB454"/>
       <path d="M74 352 L80 382 L86 352 Z" fill="#FFF0D0"/></g>
     <polygon class="part${on('voc')}" points="60,330 100,330 96,356 64,356"/>
@@ -450,16 +489,16 @@ function rocketSVG(){
   </svg>`;
 }
 function rocketBlock(){
-  const n=SKILLS.filter(s=>built(s.id)).length;
+  const n=Object.keys(PARTS).filter(id=>built(id)).length;
   return `<div class="rockwrap" id="rock">
     ${rocketSVG()}
     <div class="nfo">
       <h2>${n===9?'Ракета собрана':'Ракета собирается'}</h2>
       <p>${n===9
         ? 'Все девять деталей на месте. Можно запускать — стартовый стол свободен.'
-        : `Деталей на месте: ${n} из 9. Каждый исправный отсек станции добавляет одну деталь.`}</p>
-      <div class="parts">${SKILLS.map(s=>
-        `<span class="${built(s.id)?'on':''}">${PARTS[s.id]}</span>`).join('')}</div>
+        : `Деталей на месте: ${n} из 9. Исправно систем: ${greenCount()} из ${SKILLS.length} — детали появляются по мере ремонта.`}</p>
+      <div class="parts">${Object.keys(PARTS).map(id=>
+        `<span class="${built(id)?'on':''}">${PARTS[id]}</span>`).join('')}</div>
       ${n===9&&!S.launched?'<p style="margin:14px 0 0"><button class="btn" id="fly">Пуск</button></p>':''}
       ${S.launched?'<p style="margin:12px 0 0;color:var(--go);font-family:var(--mono);font-size:13px">◉ ракета в полёте — можно собрать ещё одну, если отсек снова просядет</p>':''}
     </div></div>`;
@@ -604,36 +643,80 @@ function home(){
     <div class="eyebrow">Карта станции</div>
     <h1>${broken.length?'Отсеков под ремонтом: '+broken.length:'Все системы исправны'}</h1>
     <p class="lead">${broken.length
-      ? 'Сегодняшняя миссия — отсек «'+skill(target).name+'». Шесть заданий, минут пятнадцать.'
+      ? 'Сегодня '+SUBJ(skill(target).subj).name.toLowerCase()+': отсек «'+skill(target).name+'». Шесть заданий, минут пятнадцать.'
       : 'Денис, станция полностью твоя. Можно зайти в любой отсек и потренироваться просто так.'}</p>
     <p><button class="btn" id="go">${broken.length?'Миссия дня — '+skill(target).name:'Свободная тренировка'}</button></p>
     ${rocketBlock()}
-    <div class="grid" id="grid"></div>`;
+    <div id="subjects"></div>`;
   document.getElementById('go').onclick=()=>startMission(target);
   document.getElementById('fly')?.addEventListener('click',launchSeq);
   document.getElementById('dfull')?.addEventListener('click',()=>{fillDemo(true);render()});
   document.getElementById('dclr')?.addEventListener('click',()=>{clearDemo();go('home')});
-  const g=document.getElementById('grid');
-  SKILLS.forEach(s=>{const st=S.skills[s.id];
-    const b=document.createElement('button');b.className='bay '+st.status;
-    const pct=st.seen?Math.round(st.first/st.seen*100):0;
-    b.innerHTML=`<span class="ico">${s.icon}</span><span class="nm">${s.name}</span>
-      <span class="full">${s.full}</span>
-      <span class="st">${STL[st.status]}${st.planet?' · '+PLANETS[s.id].n:''}</span>
-      ${st.seen?`<span class="bar"><span style="width:${pct}%"></span></span>`:''}`;
-    b.onclick=()=>startMission(s.id);g.appendChild(b)});
+  const wrap=document.getElementById('subjects');
+  const todays=todaySubject();
+  SUBJECTS.forEach(sub=>{
+    const mine=SKILLS.filter(x=>x.subj===sub.id&&S.skills[x.id]);
+    if(!mine.length)return;
+    const head=document.createElement('div');head.className='subhead';
+    head.innerHTML=`<span class="ttl">${sub.icon} ${sub.name}</span>
+      ${sub.id===todays?'<span class="chip amber">сегодня</span>':''}
+      <span class="src">${sub.src}</span>`;
+    wrap.appendChild(head);
+    const g=document.createElement('div');g.className='grid';
+    mine.forEach(s=>{const st=S.skills[s.id];
+      const b=document.createElement('button');b.className='bay '+st.status;
+      const pct=st.seen?Math.round(st.first/st.seen*100):0;
+      b.innerHTML=`<span class="ico">${s.icon}</span><span class="nm">${s.name}</span>
+        <span class="full">${s.full}</span>
+        <span class="st">${STL[st.status]}${st.planet&&PLANETS[s.id]?' · '+PLANETS[s.id].n:''}</span>
+        ${st.seen?`<span class="bar"><span style="width:${pct}%"></span></span>`:''}`;
+      b.onclick=()=>startMission(s.id);g.appendChild(b)});
+    wrap.appendChild(g);
+  });
+}
+// один и тот же предмет два дня подряд надоедает — чередуем по дню года
+function todaySubject(){
+  const d=new Date();
+  const day=Math.floor((d-new Date(d.getFullYear(),0,0))/864e5);
+  const ids=SUBJECTS.map(x=>x.id);
+  return ids[day%ids.length];
 }
 function pickTarget(){
   const rank={red:0,unknown:1,amber:2,green:3};
-  return SKILLS.slice().sort((a,b)=>rank[S.skills[a.id].status]-rank[S.skills[b.id].status])[0].id;
+  const weak=list=>list.slice().sort((a,b)=>rank[S.skills[a.id].status]-rank[S.skills[b.id].status])[0];
+  const subj=todaySubject();
+  const mine=SKILLS.filter(s=>s.subj===subj&&S.skills[s.id]);
+  const pick=weak(mine);
+  // если у дежурного предмета всё исправно — берём самое слабое вообще
+  if(pick&&S.skills[pick.id].status!=='green')return pick.id;
+  const any=weak(SKILLS.filter(s=>S.skills[s.id]));
+  return (any||SKILLS[0]).id;
+}
+// задания не должны повторяться, пока не кончатся новые
+const qkey=t=>t.slice(0,60);
+function pickQuestions(sid,n){
+  const all=BANK[sid]||[];
+  const seen=S.seenQ[sid]||[];
+  const fresh=all.filter(q=>!seen.includes(qkey(q.q)));
+  const old=all.filter(q=>seen.includes(qkey(q.q)));
+  let take=shuffle(fresh).slice(0,n);
+  if(take.length<n)take=take.concat(shuffle(old).slice(0,n-take.length));
+  // круг пройден — начинаем заново
+  if(!fresh.length)S.seenQ[sid]=[];
+  return take;
+}
+function markSeen(sid,qs){
+  const seen=S.seenQ[sid]||(S.seenQ[sid]=[]);
+  qs.forEach(({q})=>{const k=qkey(q.q);if(!seen.includes(k))seen.push(k)});
 }
 
 /* ─────────── ДИАГНОСТИКА ─────────── */
 function startDiag(){
   route='diag';
-  const qs=[];SKILLS.forEach(s=>shuffle(BANK[s.id]).slice(0,2).forEach(q=>qs.push({sid:s.id,q})));
+  const qs=[];SKILLS.forEach(s=>pickQuestions(s.id,2).forEach(q=>qs.push({sid:s.id,q})));
   runSet(shuffle(qs),{mode:'diag',title:'Проверка систем'},res=>{
     SKILLS.forEach(s=>{const c=res.filter(r=>r.sid===s.id&&r.ok).length;
+      if(!S.skills[s.id])return;
       S.skills[s.id].status=c===2?'green':c===1?'amber':'red';
       S.skills[s.id].seen+=2;S.skills[s.id].first+=c;
       if(c===2)S.skills[s.id].planet=true});
@@ -654,7 +737,8 @@ function startDiag(){
 /* ─────────── МИССИЯ ─────────── */
 function startMission(sid){
   route='mission';const s=skill(sid);
-  const qs=shuffle(BANK[sid]).slice(0,6).map(q=>({sid,q}));
+  const qs=pickQuestions(sid,6).map(q=>({sid,q}));
+  markSeen(sid,qs);
   runSet(qs,{mode:'mission',title:s.icon+' '+s.name},res=>{
     const c=res.filter(r=>r.ok).length;const st=S.skills[sid];
     let got=c*RATE.right+(res.length-c)*RATE.after;
@@ -664,8 +748,8 @@ function startMission(sid){
     const was=st.status;
     st.status=c>=5?'green':c>=3?'amber':'red';
     markDay();S.log.push({d:today(),sid,c,n:res.length});save();
-    const newPlanet=st.status==='green'&&!st.planet;
-    if(newPlanet){st.planet=true;got+=RATE.bay}
+    const newPlanet=st.status==='green'&&!st.planet&&!!PLANETS[sid];
+    if(st.status==='green'&&!st.planet){st.planet=true;got+=RATE.bay}
     pay(got);save();
     const p=PLANETS[sid];
     V.innerHTML=`<div class="eyebrow">Миссия завершена</div>
@@ -762,6 +846,8 @@ function runSet(items,opt,done){
       const d=document.getElementById('db');
       d.className='debrief';
       d.innerHTML=`
+        ${canSpeak()?`<div style="display:flex;justify-content:flex-end">
+          <button class="voice" id="sayall">🔊 Объясни голосом</button></div>`:''}
         <div class="row"><div class="lb">Что не так</div><div class="tx">${q.why}</div></div>
         <div class="row"><div class="lb">Правило</div><div class="tx">${q.rule}</div></div>
         <div class="row"><div class="lb">Как это звучит</div><div class="ex">${q.ex.replace(/</g,'&lt;')}</div>
@@ -772,7 +858,9 @@ function runSet(items,opt,done){
           <div class="verdict" id="vd"></div></div>`;
       const inp=document.getElementById('in'),vd=document.getElementById('vd');
       document.getElementById('sayex')?.addEventListener('click',()=>speak(q.ex));
-      if(!S.mute)setTimeout(()=>speak(q.ex),300);
+      document.getElementById('sayall')?.addEventListener('click',()=>speakExplain(q));
+      // объяснение длинное — читаем его вслух, чтобы не приходилось всё вычитывать
+      if(!S.mute)setTimeout(()=>speakExplain(q),300);
       let tries=0;inp.focus();
       const check=()=>{
         if(norm(inp.value)===norm(q.up.a)){
@@ -882,9 +970,9 @@ function lockScreen(){
   inp.onkeydown=e=>{if(e.key==='Enter')act()};
 }
 function parentScreen(){
-  const done=SKILLS.filter(s=>S.skills[s.id].status==='green').length;
-  const tot=SKILLS.reduce((a,s)=>a+S.skills[s.id].seen,0);
-  const fir=SKILLS.reduce((a,s)=>a+S.skills[s.id].first,0);
+  const done=SKILLS.filter(s=>S.skills[s.id]&&S.skills[s.id].status==='green').length;
+  const tot=SKILLS.reduce((a,s)=>a+(S.skills[s.id]?S.skills[s.id].seen:0),0);
+  const fir=SKILLS.reduce((a,s)=>a+(S.skills[s.id]?S.skills[s.id].first:0),0);
   const week=S.log.filter(l=>l.d>=new Date(Date.now()-6*864e5).toISOString().slice(0,10));
   V.innerHTML=`<p style="margin-bottom:16px"><button class="btn ghost" id="pback2">← На станцию</button></p>
     <div class="eyebrow">Сводка по навыкам</div>
@@ -892,21 +980,22 @@ function parentScreen(){
     <p class="lead">Не баллы, а состояние девяти систем языка по американской программе Grade 3–4.
     Красное — то, что нужно чинить; жёлтое — знает, но плавает.</p>
     <div class="stats">
-      <div><div class="v" style="color:var(--go)">${done}<span style="color:var(--ink-faint);font-size:16px">/9</span></div><div class="l">Отсеков закрыто</div></div>
+      <div><div class="v" style="color:var(--go)">${done}<span style="color:var(--ink-faint);font-size:16px">/${SKILLS.length}</span></div><div class="l">Отсеков закрыто</div></div>
       <div><div class="v">${tot?Math.round(fir/tot*100):0}%</div><div class="l">Верно с 1 раза</div></div>
       <div><div class="v">${streak()}</div><div class="l">Дней подряд</div></div>
       <div><div class="v">${week.length}</div><div class="l">Миссий за неделю</div></div>
     </div>
     <table><thead><tr><th>Отсек</th><th>Что это</th><th>Состояние</th><th style="text-align:right">Решено</th><th style="text-align:right">С 1 раза</th></tr></thead>
-    <tbody>${SKILLS.map(s=>{const t=S.skills[s.id];return `<tr>
-      <td style="font-family:var(--disp);font-weight:600">${s.icon} ${s.name}</td>
+    <tbody>${SKILLS.filter(s=>S.skills[s.id]).map(s=>{const t=S.skills[s.id];return `<tr>
+      <td style="font-family:var(--disp);font-weight:600">${s.icon} ${s.name}
+        <div style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);font-weight:400;letter-spacing:.06em;text-transform:uppercase">${SUBJ(s.subj).name}</div></td>
       <td style="color:var(--ink-faint);font-size:14px">${s.full}</td>
       <td><span class="chip ${t.status}">${STL[t.status]}</span></td>
       <td class="n" style="text-align:right">${t.seen}</td>
       <td class="n" style="text-align:right">${t.seen?Math.round(t.first/t.seen*100)+'%':'—'}</td>
     </tr>`}).join('')}</tbody></table>
     ${S.log.length?`<h2 style="margin-top:32px">Последние миссии</h2>
-    <table><tbody>${S.log.slice(-8).reverse().map(l=>`<tr>
+    <table><tbody>${S.log.slice(-8).reverse().filter(l=>skill(l.sid)).map(l=>`<tr>
       <td class="n">${l.d.slice(8)}.${l.d.slice(5,7)}</td>
       <td>${skill(l.sid).icon} ${skill(l.sid).name}</td>
       <td class="n" style="text-align:right">${l.c} из ${l.n}</td></tr>`).join('')}</tbody></table>`:''}
@@ -949,6 +1038,21 @@ function parentScreen(){
     const test=document.createElement('button');test.className='btn ghost';test.textContent='Послушать';
     test.onclick=()=>speak('Look! The rocket is taking off right now. Three, two, one!');
     vr.appendChild(sel);vr.appendChild(test);
+    const ru=voices.filter(v=>/^ru/i.test(v.lang));
+    if(ru.length){
+      const rs=document.createElement('select');
+      rs.style.cssText=sel.style.cssText;
+      const cr=ruVoice();
+      ru.forEach(v=>{const o=document.createElement('option');o.value=v.name;
+        o.textContent='Объяснения: '+v.name;if(cr&&v.name===cr.name)o.selected=true;rs.appendChild(o)});
+      rs.onchange=()=>{S.ruvoice=rs.value;save();speakRu('Смотри: у глагола рядом с he или she вырастает хвостик -s.')};
+      vr.appendChild(rs);
+    }else{
+      const w=document.createElement('span');
+      w.style.cssText='font-size:14px;color:var(--ink-faint);flex:1;min-width:200px';
+      w.textContent='Русского голоса в системе нет — объяснения читаются только глазами. Добавить: Системные настройки → Универсальный доступ → Устная речь.';
+      vr.appendChild(w);
+    }
   }
   const pb=document.getElementById('ppz');
   pb.innerHTML=S.prizes.length?'':`<div class="pz"><span class="nm" style="color:var(--ink-faint)">Список пуст</span></div>`;
