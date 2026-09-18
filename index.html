@@ -256,7 +256,24 @@ const blank=()=>({name:'DENIS',started:null,days:[],skills:Object.fromEntries(SK
   {status:'unknown',seen:0,first:0,planet:false}])),diag:null,log:[],
   station:null,pin:null,voice:null,ruvoice:null,seenQ:{},mute:false,demo:false,launched:false,coins:0,earned:0,prizes:PRIZES0.slice(),orders:[]});
 let S=load();
-function load(){try{const r=localStorage.getItem(KEY);if(r)return Object.assign(blank(),JSON.parse(r))}catch(e){}return blank()}
+function load(){
+  try{
+    const r=localStorage.getItem(KEY);
+    if(r){
+      const saved=Object.assign(blank(),JSON.parse(r));
+      // в сохранённом прогрессе нет тем, добавленных позже — дописываем их пустыми,
+      // иначе станция спотыкается об отсек, которого в её памяти не существует
+      const fresh=blank().skills;
+      saved.skills=saved.skills||{};
+      for(const id in fresh)if(!saved.skills[id])saved.skills[id]=fresh[id];
+      if(!saved.prizes)saved.prizes=PRIZES0.slice();
+      if(!saved.orders)saved.orders=[];
+      if(!saved.seenQ)saved.seenQ={};
+      return saved;
+    }
+  }catch(e){}
+  return blank();
+}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
   if(hasCfg()&&S.station){clearTimeout(SYNC.t);SYNC.t=setTimeout(push,900)}}
 const today=()=>new Date().toISOString().slice(0,10);
@@ -555,8 +572,11 @@ async function pull(){
     if(!rows.length)return false;
     const remote=rows[0].data;
     if(remote&&JSON.stringify(remote)!==JSON.stringify(stripLocal(S))){
-      const keep={pin:S.pin,station:S.station};
+      const keep={pin:S.pin,station:S.station,voice:S.voice,ruvoice:S.ruvoice};
       S=Object.assign(blank(),remote,keep);
+      const fresh=blank().skills;S.skills=S.skills||{};
+      for(const id in fresh)if(!S.skills[id])S.skills[id]=fresh[id];
+      if(!S.seenQ)S.seenQ={};
       try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
       return true;
     }
