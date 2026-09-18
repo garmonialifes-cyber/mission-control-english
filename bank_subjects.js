@@ -220,7 +220,7 @@ energy:[
   rule:'Потенциальная энергия — это запасённая энергия положения. Чем выше предмет и чем он тяжелее, тем больше запас. Кинетическая энергия — энергия самого движения, она появляется, только когда предмет реально движется. Мяч на вершине холма стоит неподвижно: весь его запас пока потенциальный. Стоит его подтолкнуть — запас начнёт превращаться в движение.',
   ex:'На вершине: скорости нет → potential energy максимальна\nКатится вниз: скорость растёт → potential превращается в kinetic\nВнизу: высоты нет, скорость наибольшая → kinetic',
   again:'Подумай про натянутую резинку. Она неподвижна, но в ней явно что-то есть — иначе она бы не выстрелила. Вот это «что-то» и есть потенциальная энергия.',
-  up:{q:'A book is on a high shelf. What kind of energy does it have?', a:'potential'}},
+  up:{q:'A ball sits still at the top of a hill. Is its speed high or zero? (high / zero)', a:'zero'}},
 
  {q:'When you rub your hands together, what energy change happens?',
   o:['motion energy changes into heat','heat changes into light','sound changes into motion','energy disappears'],
@@ -244,7 +244,7 @@ energy:[
   rule:'Возобновляемые источники — ветер, солнце, вода, тепло земли: они восполняются постоянно, пока светит Солнце и дует ветер. Невозобновляемые — уголь, нефть, природный газ: это остатки древних организмов, на образование которых ушли миллионы лет. Разница не в том, кончатся они или нет, а в том, успевают ли они восстанавливаться.',
   ex:'Ветер — дует снова и снова → renewable\nУголь — образовывался миллионы лет → nonrenewable\nСолнце, вода, ветер → renewable\nНефть, газ → nonrenewable',
   again:'Сравни с водой в стакане и дождём. Стакан выпил — он пустой, пока не нальёшь. А дождь идёт снова сам. Уголь — стакан, ветер — дождь.',
-  up:{q:'Is sunlight renewable or nonrenewable?', a:'renewable'}},
+  up:{q:'Did coal take millions of years to form? (yes / no)', a:'yes'}},
 
  {q:'A toaster changes electrical energy mostly into ___ .',
   o:['heat','sound','motion','light'],
@@ -320,7 +320,7 @@ earth:[
   rule:'Три процесса идут по очереди и их легко перепутать. Выветривание — разрушение породы на месте: вода замерзает в трещине, расширяется и разрывает камень. Эрозия — перенос обломков водой, ветром или льдом. Отложение — когда перенос заканчивается и обломки оседают на новом месте. Ключевой вопрос: разрушилось, перенеслось или улеглось?',
   ex:'Вода затекла в трещину\nЗамёрзла и расширилась → давит изнутри\nКамень треснул, но остался там же → weathering\nЕсли обломки унесёт ручьём → уже erosion',
   again:'Запомни по глаголам: разрушить на месте — weathering, унести — erosion, положить — deposition.',
-  up:{q:'A river carries sand downstream. Is that weathering, erosion or deposition?', a:'erosion'}},
+  up:{q:'The cracked rock stayed where it was. Did it move to a new place? (yes / no)', a:'no'}},
 
  {q:'A river drops sand and mud at its mouth, building new land. This is ___ .',
   o:['deposition','weathering','erosion','evaporation'],
@@ -328,7 +328,7 @@ earth:[
   rule:'Отложение происходит там, где поток теряет силу. Пока река течёт быстро, она несёт песок и ил. У устья течение замедляется, и удерживать груз становится нечем — частицы оседают. Так растут дельты, песчаные косы и отмели. Заметь: материал при этом не разрушается и не исчезает, он просто меняет место жительства.',
   ex:'Река несёт песок → erosion\nТечение замедляется у устья\nПесок оседает → deposition\nГод за годом нарастает новая суша — дельта',
   again:'Подумай про лужу после дождя. Пока вода бежала, она несла землю. Лужа остановилась — и на дне остался слой ила.',
-  up:{q:'Sand piles up at the bottom of a hill after rain. Is that erosion or deposition?', a:'deposition'}},
+  up:{q:'Does material settle when water speeds up or slows down? (speeds up / slows down)', a:'slows down'}},
 
  {q:'Which layer of the Earth is the thinnest?',
   o:['crust','mantle','outer core','inner core'],
