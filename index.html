@@ -244,6 +244,7 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-d
 <script src="config.js"></script>
 <script src="bank.js"></script>
 <script src="bank_subjects.js"></script>
+<script src="gen_math.js"></script>
 <script>
 const KEY='mce_denis_v1';
 const PRIZES0=[
@@ -715,6 +716,15 @@ function pickTarget(){
 // задания не должны повторяться, пока не кончатся новые
 const qkey=t=>t.slice(0,60);
 function pickQuestions(sid,n){
+  // у генераторных тем задания собираются на лету и никогда не повторяются
+  if(typeof GEN!=='undefined'&&GEN[sid]){
+    const out=[],seen=new Set();
+    for(let i=0;i<n*25&&out.length<n;i++){
+      const q=GEN[sid]();
+      if(!seen.has(q.q)){seen.add(q.q);out.push(q)}
+    }
+    return out;
+  }
   const all=BANK[sid]||[];
   const seen=S.seenQ[sid]||[];
   const fresh=all.filter(q=>!seen.includes(qkey(q.q)));
@@ -726,6 +736,7 @@ function pickQuestions(sid,n){
   return take;
 }
 function markSeen(sid,qs){
+  if(typeof GEN!=='undefined'&&GEN[sid])return;   // генераторным помнить нечего
   const seen=S.seenQ[sid]||(S.seenQ[sid]=[]);
   qs.forEach(({q})=>{const k=qkey(q.q);if(!seen.includes(k))seen.push(k)});
 }
