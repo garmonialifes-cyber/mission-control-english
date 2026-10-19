@@ -72,6 +72,10 @@ p{margin:0 0 14px;max-width:62ch}
 .bay .st{margin-top:auto;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
 .bay.green .st{color:var(--go)} .bay.amber .st{color:var(--warn)}
 .bay.red .st{color:var(--fail)} .bay.unknown .st{color:var(--ink-faint)}
+.bay .lvl{display:flex;gap:3px;margin-top:7px}
+.bay .lvl i{flex:1;height:4px;background:#1a2340;display:block}
+.bay .lvl i.on{background:var(--go)}
+.bay.amber .lvl i.on{background:var(--warn)}
 .bay .bar{height:3px;background:#1a2340;margin-top:6px}
 .bay .bar span{display:block;height:100%;background:var(--amber)}
 
@@ -255,7 +259,7 @@ const PRIZES0=[
   {id:'p4',n:'Набор LEGO про космос',g:3000,demo:true}
 ];
 const blank=()=>({name:'DENIS',started:null,days:[],skills:Object.fromEntries(SKILLS.map(s=>[s.id,
-  {status:'unknown',seen:0,first:0,planet:false}])),diag:null,log:[],
+  {status:'unknown',seen:0,first:0,planet:false,lvl:0,last:null}])),diag:null,log:[],
   station:null,pin:null,voice:null,ruvoice:null,seenQ:{},mute:false,demo:false,launched:false,coins:0,earned:0,prizes:PRIZES0.slice(),orders:[]});
 let S=load();
 function load(){
@@ -268,6 +272,11 @@ function load(){
       const fresh=blank().skills;
       saved.skills=saved.skills||{};
       for(const id in fresh)if(!saved.skills[id])saved.skills[id]=fresh[id];
+      for(const id in saved.skills){
+        const st=saved.skills[id];
+        if(st.lvl===undefined)st.lvl=st.status==='green'?1:0;
+        if(st.last===undefined)st.last=null;
+      }
       if(!saved.prizes)saved.prizes=PRIZES0.slice();
       if(!saved.orders)saved.orders=[];
       if(!saved.seenQ)saved.seenQ={};
@@ -286,8 +295,20 @@ function streak(){let n=0,d=new Date();for(;;){const k=d.toISOString().slice(0,1
 const norm=t=>t.toLowerCase().trim().replace(/[.!?,]+$/,'').replace(/\s+/g,' ');
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 const STL={green:'ИСПРАВЕН',amber:'ШАТКО',red:'ПОВРЕЖДЕНИЕ',unknown:'НЕ ПРОВЕРЕН'};
+// что написать на карточке отсека
+function bayLabel(id){
+  const st=S.skills[id];
+  if(stale(id))return 'ПОРА ПРОВЕРИТЬ · '+daysSince(st.last)+' дн';
+  if(st.status==='green')return 'УРОВЕНЬ '+st.lvl+' ИЗ '+MAXLVL+' · '+lvlName(st.lvl).toUpperCase();
+  return STL[st.status];
+}
 const skill=id=>SKILLS.find(s=>s.id===id);
-const RATE={right:10,after:3,mission:25,bay:150,streak:20};
+const RATE={right:10,after:3,mission:25,bay:150,streak:20,lvl:120};
+const MAXLVL=3;
+const DAYS_FRESH=5;            // через столько дней форму надо подтвердить
+const daysSince=d=>d?Math.floor((Date.now()-new Date(d+'T00:00:00'))/864e5):999;
+const stale=id=>{const st=S.skills[id];return st&&st.lvl>0&&daysSince(st.last)>=DAYS_FRESH};
+const lvlName=n=>['не проверен','починен','налажен','отлажен'][n]||'отлажен';
 function pay(n){S.coins+=n;S.earned+=n;save();return n}
 const V=document.getElementById('view');
 let route='home';
@@ -649,24 +670,24 @@ function home(){
       по два вопроса на отсек. Ошибаться можно и нужно — так приборы и находят поломку.</p>
       <p style="color:var(--ink-faint);font-size:15px">Ничего не нужно учить заранее. Просто отвечай как думаешь.</p>
       <p><button class="btn" id="go">Начать проверку систем</button></p>
-      <p style="margin-top:26px;font-size:14px;color:var(--ink-faint)">
-        Взрослому: <button class="voice" id="demo">Посмотреть, как всё устроено</button><br>
-        <span style="font-size:13px">Заполнит станцию придуманными результатами — чтобы увидеть
-        карту, ракету и грузовой отсек, не проходя задания. Потом всё стирается одной кнопкой.</span></p>`;
-    document.getElementById('go').onclick=startDiag;
-    document.getElementById('demo').onclick=()=>{fillDemo(false);go('home')};return;
+      <p style="margin-top:26px;font-size:13px;color:var(--ink-faint)">
+        Взрослому: показ станции — на вкладке «Для мамы», она закрыта кодом.</p>`;
+    document.getElementById('go').onclick=startDiag;return;
   }
-  const broken=SKILLS.filter(s=>S.skills[s.id].status!=='green');
+  const broken=SKILLS.filter(s=>S.skills[s.id]&&(S.skills[s.id].status!=='green'||stale(s.id)||S.skills[s.id].lvl<MAXLVL));
+  const needCheck=SKILLS.filter(s=>stale(s.id)).length;
   const target=pickTarget();
   V.innerHTML=`${S.demo?`<div class="demo-bar">
-      <span>Показ: результаты придуманы, чтобы посмотреть, как всё выглядит</span>
+      <span>ПОКАЗ ДЛЯ ВЗРОСЛОГО: результаты придуманы, верные ответы подсвечены.
+      Пока он включён, заниматься нельзя — выключите его.</span>
       <button class="voice" id="dfull">Собрать ракету целиком</button>
       <button class="voice" id="dclr">Стереть показ</button></div>`:''}
     <div class="eyebrow">Карта станции</div>
-    <h1>${broken.length?'Отсеков под ремонтом: '+broken.length:'Все системы исправны'}</h1>
+    <h1>${broken.length?'Отсеков в работе: '+broken.length:'Станция отлажена'}</h1>
     <p class="lead">${broken.length
       ? 'Сегодня '+SUBJ(skill(target).subj).name.toLowerCase()+': отсек «'+skill(target).name+'». Шесть заданий, минут пятнадцать.'
-      : 'Денис, станция полностью твоя. Можно зайти в любой отсек и потренироваться просто так.'}</p>
+        +(needCheck?' Ещё '+needCheck+' отсек'+(needCheck>4?'ов':needCheck>1?'а':'')+' просят подтвердить форму.':'')
+      : 'Все отсеки на максимуме. Заходи в любой — задания каждый раз новые, они не кончаются.'}</p>
     <p><button class="btn" id="go">${broken.length?'Миссия дня — '+skill(target).name:'Свободная тренировка'}</button></p>
     ${rocketBlock()}
     <div id="subjects"></div>`;
@@ -688,10 +709,11 @@ function home(){
     mine.forEach(s=>{const st=S.skills[s.id];
       const b=document.createElement('button');b.className='bay '+st.status;
       const pct=st.seen?Math.round(st.first/st.seen*100):0;
+      if(stale(s.id))b.className='bay amber';
       b.innerHTML=`<span class="ico">${s.icon}</span><span class="nm">${s.name}</span>
         <span class="full">${s.full}</span>
-        <span class="st">${STL[st.status]}${st.planet&&PLANETS[s.id]?' · '+PLANETS[s.id].n:''}</span>
-        ${st.seen?`<span class="bar"><span style="width:${pct}%"></span></span>`:''}`;
+        <span class="st">${bayLabel(s.id)}</span>
+        <span class="lvl">${[1,2,3].map(n=>`<i class="${st.lvl>=n?'on':''}"></i>`).join('')}</span>`;
       b.onclick=()=>startMission(s.id);g.appendChild(b)});
     wrap.appendChild(g);
   });
@@ -704,15 +726,26 @@ function todaySubject(){
   return ids[day%ids.length];
 }
 function pickTarget(){
-  const rank={red:0,unknown:1,amber:2,green:3};
-  const weak=list=>list.slice().sort((a,b)=>rank[S.skills[a.id].status]-rank[S.skills[b.id].status])[0];
+  // очередь: поломки → непроверенные → шаткие → просроченные → недокачанные → остальные,
+  // внутри одной группы первым идёт тот, кого дольше не трогали
+  const weight=id=>{
+    const st=S.skills[id];
+    if(st.status==='red')return 0;
+    if(st.status==='unknown')return 1;
+    if(st.status==='amber')return 2;
+    if(stale(id))return 3;
+    if(st.lvl<MAXLVL)return 4;
+    return 5;
+  };
+  const weak=list=>list.slice().sort((a,b)=>
+    weight(a.id)-weight(b.id) || daysSince(S.skills[b.id].last)-daysSince(S.skills[a.id].last))[0];
   const subj=todaySubject();
   const mine=SKILLS.filter(s=>s.subj===subj&&S.skills[s.id]);
   const pick=weak(mine);
-  // если у дежурного предмета всё исправно — берём самое слабое вообще
-  if(pick&&S.skills[pick.id].status!=='green')return pick.id;
+  // у дежурного предмета всё на максимуме — берём самое слабое вообще
+  if(pick&&weight(pick.id)<5)return pick.id;
   const any=weak(SKILLS.filter(s=>S.skills[s.id]));
-  return (any||SKILLS[0]).id;
+  return (any||pick||SKILLS[0]).id;
 }
 // задания не должны повторяться, пока не кончатся новые
 const qkey=t=>t.slice(0,60);
@@ -777,8 +810,17 @@ function startMission(sid){
     if(c>=5)got+=RATE.mission;
     if(streak()>=3)got+=RATE.streak;
     st.seen+=res.length;st.first+=c;
-    const was=st.status;
-    st.status=c>=5?'green':c>=3?'amber':'red';
+    const was=st.status, wasLvl=st.lvl||0;
+    st.last=today();
+    if(c>=5){
+      st.status='green';
+      if(st.lvl<MAXLVL){st.lvl++;got+=RATE.lvl}
+    }else if(c>=3){
+      st.status='amber';                    // уровень сохраняется, но форму надо подтвердить
+    }else{
+      st.status='red';
+      if(st.lvl>0)st.lvl--;                 // просел — уровень падает, есть куда расти снова
+    }
     markDay();S.log.push({d:today(),sid,c,n:res.length});save();
     const newPlanet=st.status==='green'&&!st.planet&&!!PLANETS[sid];
     if(st.status==='green'&&!st.planet){st.planet=true;got+=RATE.bay}
@@ -788,9 +830,16 @@ function startMission(sid){
       <h1>${c} из ${res.length} с первого раза</h1>
       <div class="bal" style="margin-bottom:18px"><span class="v">+${got}</span><span class="u">коинов</span>
         <span class="sp"></span><span class="sub">на счету ${S.coins}<br>грузовой отсек ждёт</span></div>
-      <p class="lead">${st.status==='green'?'Отсек «'+s.name+'» исправен. Курс свободен.'
-        :st.status==='amber'?'Отсек «'+s.name+'» держится, но шатается. Завтра добьём.'
-        :'Отсек «'+s.name+'» ещё повреждён. Это нормально — вернёмся завтра, станет легче.'}</p>
+      <p class="lead">${
+        st.status==='green'&&st.lvl>wasLvl&&st.lvl<MAXLVL
+          ? 'Отсек «'+s.name+'» вышел на уровень '+st.lvl+' из '+MAXLVL+'. Дальше задания будут новые — ни одно не повторится.'
+        : st.status==='green'&&st.lvl>=MAXLVL
+          ? 'Отсек «'+s.name+'» отлажен полностью. Через несколько дней загляни подтвердить форму, иначе приборы снова засомневаются.'
+        : st.status==='green'
+          ? 'Отсек «'+s.name+'» держит уровень '+st.lvl+' из '+MAXLVL+'.'
+        : st.status==='amber'
+          ? 'Отсек «'+s.name+'» держится, но шатается. Уровень остался прежний — '+st.lvl+' из '+MAXLVL+'.'
+        : 'Отсек «'+s.name+'» просел. Это нормально: вернёмся завтра, задания будут другие.'}</p>
       ${newPlanet?`<div class="planet"><div class="eyebrow">Открыта новая точка маршрута</div>
         <div class="nm">${p.n}</div><div class="fact">${p.f}</div></div>`:''}
       <p style="margin-top:20px"><button class="btn" id="ok">На станцию</button></p>`;
@@ -1031,6 +1080,12 @@ function parentScreen(){
       <td class="n">${l.d.slice(8)}.${l.d.slice(5,7)}</td>
       <td>${skill(l.sid).icon} ${skill(l.sid).name}</td>
       <td class="n" style="text-align:right">${l.c} из ${l.n}</td></tr>`).join('')}</tbody></table>`:''}
+    <h2 style="margin-top:34px">Показ станции</h2>
+    <p style="font-size:15px;color:var(--ink-dim)">Заполнит станцию придуманными результатами, чтобы вы
+    увидели карту, ракету и грузовой отсек, не проходя задания. В показе у верного варианта стоит пометка —
+    поэтому ребёнку сюда нельзя: он просто спишет. Выключается одной кнопкой.</p>
+    <p><button class="btn ghost" id="dmo">${S.demo?'Выключить показ':'Включить показ'}</button></p>
+
     <h2 style="margin-top:34px">Голос</h2>
     <p style="font-size:15px;color:var(--ink-dim)">Каким голосом приложение читает задания.
     Сейчас говорит <b class="mono" style="color:var(--amber)">${(enVoice()||{}).name||'голос по умолчанию'}</b>.
@@ -1056,6 +1111,10 @@ function parentScreen(){
     <p class="foot">Прогресс хранится в этом браузере. <button class="btn ghost" id="lk" style="padding:6px 12px;font-size:12px">Закрыть раздел</button>
     <button class="btn ghost" id="rs" style="padding:6px 12px;font-size:12px">Сбросить всё</button></p>`;
   document.getElementById('pback2').onclick=()=>go('home');
+  document.getElementById('dmo').onclick=()=>{
+    if(S.demo){clearDemo();alert('Показ выключен, станция очищена.')}
+    else{if(!confirm('Включить показ? Прогресс Дениса будет заменён придуманными результатами.'))return;fillDemo(false)}
+    go('home');};
   const vr=document.getElementById('vrowp');
   if(!canSpeak()||!enList().length){
     vr.innerHTML='<span style="color:var(--ink-faint);font-size:15px">Этот браузер не умеет читать вслух.</span>';
